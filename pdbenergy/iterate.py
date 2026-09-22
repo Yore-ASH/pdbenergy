@@ -330,6 +330,7 @@ def run_rounds(
     raw_dir: str = "data/raw",
     build_new: bool = True,
     warm_start: bool = True,
+    build_limit: int = 0,
     threads: int = 8,
     workers: int = 1,
     verbose: bool = True,
@@ -357,10 +358,18 @@ def run_rounds(
             if pending:
                 from .ensemble import build_all
 
-                print(f"  {len(pending)} entry/entries to label "
+                if build_limit and len(pending) > build_limit:
+                    # Deterministic subset, so successive calls walk the corpus in
+                    # a stable order and never re-label the same entries.
+                    chosen = dict(sorted(pending.items())[:build_limit])
+                    print(f"  staging: labelling {len(chosen)} of {len(pending)} pending "
+                          f"entries this round (--build-limit {build_limit})", flush=True)
+                else:
+                    chosen = pending
+                print(f"  labelling {len(chosen)} entry/entries "
                       f"(this is the expensive step)", flush=True)
                 build_all(
-                    pending, out_dir=interim_dir,
+                    chosen, out_dir=interim_dir,
                     ensemble_cfg=cfg.ensemble, label_cfg=cfg.label,
                     prepare_cfg=cfg.prepare, threads=threads, workers=workers,
                     overwrite=False, verbose=True,
@@ -505,6 +514,10 @@ def build_parser() -> argparse.ArgumentParser:
                         help="disable the graph cache above this estimated memory footprint")
     parser.add_argument("--max-residues", type=int, default=None,
                         help="only label entries up to this size (default: config, 120)")
+    parser.add_argument("--build-limit", type=int, default=0, metavar="N",
+                        help="label at most N new entries this round (0 = all pending). "
+                             "Use this to stage a large corpus: each call is resumable, "
+                             "so you can stop, inspect and continue")
     parser.add_argument("--min-residues", type=int, default=None,
                         help="skip fragments shorter than this (default: config, 10)")
     parser.add_argument("--threads", type=int, default=8, help="OpenMM threads per ensemble worker")
@@ -550,8 +563,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         out_dir=args.out_dir,
         interim_dir=args.interim_dir,
         raw_dir=args.raw_dir,
-        build_new=not args.no_build_new,
-        warm_start=not args.no_warm_start,
+        build_new=args.build_new,
+        build_limit=args.build_limit,
+        warm_start=args.warm_start,
         threads=args.threads,
         workers=args.workers,
     )

@@ -92,6 +92,38 @@ class TestRBF(unittest.TestCase):
         self.assertAlmostEqual(float(out[2].abs().sum()), 0.0, places=6)
         self.assertGreater(float(out[0].abs().sum()), 0.0)
 
+    def test_basis_narrower_than_cutoff_is_rejected(self):
+        """``rbf_end < cutoff`` silently zeroes every radial feature on long edges.
+
+        With a narrow basis the Gaussians underflow long before the cutoff, so
+        edges in ``(rbf_end, cutoff]`` reach the network carrying only the bond
+        flag.  That looks like "a coarser model" rather than a broken config, so
+        it has to fail loudly.
+        """
+        with self.assertRaises(ValueError):
+            GaussianRBFExpansion(64, cutoff=4.0, rbf_start=0.0, rbf_end=3.0)
+        # Matching or exceeding the cutoff is fine.
+        GaussianRBFExpansion(64, cutoff=4.0, rbf_start=0.0, rbf_end=4.0)
+        GaussianRBFExpansion(32, cutoff=4.0, rbf_start=0.0, rbf_end=5.0)
+
+    def test_long_edges_go_dead_when_the_basis_is_too_narrow(self):
+        """The mechanism behind the guard, shown directly rather than asserted.
+
+        The constructor now rejects this combination, so build a valid instance and
+        then widen its cutoff to reproduce what the rejected config would have
+        done.  At r = 4.5 A the cosine envelope is still active (0.45 * ... > 0), so
+        a zero output can only come from the basis having underflowed.
+        """
+        expansion = GaussianRBFExpansion(64, cutoff=3.0, rbf_start=0.0, rbf_end=3.0)
+        expansion.cutoff = 5.0                       # bypass the guard on purpose
+        out = expansion(torch.tensor([4.5]))
+        self.assertLess(
+            float(out.abs().max()), 1e-6,
+            "a 4.5 A edge must produce no radial signal with a 0-3 A basis",
+        )
+        # And a distance the basis can still see does produce signal.
+        self.assertGreater(float(expansion(torch.tensor([2.0])).abs().max()), 0.1)
+
 
 class TestBondFlags(unittest.TestCase):
     def test_oh_bond_is_flagged_but_distant_atom_is_not(self):

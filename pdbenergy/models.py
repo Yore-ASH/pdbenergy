@@ -92,6 +92,21 @@ class GaussianRBFExpansion(nn.Module):
         super().__init__()
         self.n_rbf = int(n_rbf)
         self.cutoff = float(cutoff)
+
+        # The basis must cover the cutoff.  If it does not, every edge longer than
+        # rbf_end has *all* basis functions underflow to zero (the Gaussians are
+        # narrow: at n_rbf=64 over 0-3 A the spacing is 0.048 A, so a distance 1 A
+        # past the last centre gives exp(-220)).  Those edges then reach the
+        # network carrying only the (zero) bond flag - silent information loss
+        # that looks like "a coarser model" rather than a broken config.
+        if rbf_end < cutoff * 0.98:
+            raise ValueError(
+                f"features.rbf_end ({rbf_end:g}) is below features.cutoff ({cutoff:g}). "
+                f"Edges between {rbf_end:g} and {cutoff:g} A would carry all-zero radial "
+                f"features. Set rbf_end >= cutoff (e.g. rbf_end={cutoff:g}), or widen the "
+                f"basis; to get finer resolution, raise n_rbf instead of shrinking the range."
+            )
+
         centers = torch.linspace(rbf_start, rbf_end, self.n_rbf, dtype=torch.float32)
         width = (rbf_end - rbf_start) / max(1, self.n_rbf - 1)
         self.register_buffer("centers", centers, persistent=False)

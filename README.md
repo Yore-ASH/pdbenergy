@@ -22,43 +22,85 @@
 ## 安装
 
 ```powershell
+git clone <你的仓库地址> && cd pdbenergy
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-# CPU 版 PyTorch（本项目在 CPU 上训练，几百万参数、上千样本完全够用）
+.\.venv\Scripts\python.exe -m pip install -e ".[physics]"
+# CPU 版 PyTorch（Windows 上 PyPI 的 torch 就是 CPU 版；Linux 上需要显式指定）
 .\.venv\Scripts\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cpu
 ```
 
-## 快速开始
+`pip install -e .` 会注册一个 `pdbenergy` 命令，所以下面所有
+`python -m pdbenergy.cli <子命令>` 都可以写成 `pdbenergy <子命令>`。
+
+> `data/interim/` 里已经包含 14 个蛋白、730 个构象的**已标注数据集**（约 3.8 MB），
+> 所以你可以**跳过最耗时的物理打标签步骤**，直接 `dataset` → `train`。
+
+## 三种调用方式
+
+### 方式一：命令行（日常使用）
+
+| 子命令 | 作用 | 典型耗时 |
+|---|---|---|
+| `download` | 从 RCSB 下载 PDB 结构 | 秒级 |
+| `inventory` | 体检：残基数、链数、模型数、是否可用 | 秒级 |
+| `ensemble` | 生成构象系综并用力场打标签 | **最慢，约 2–3 分钟/蛋白** |
+| `dataset` | 按蛋白质切分 + 目标标准化 | 秒级 |
+| `train` | 训练（`--model schnet` 或 `mlp`） | Schnet 约 100 秒/轮 |
+| `evaluate` | 指标 + 全部图表 | 约 1 分钟 |
+| `predict` | PDB 文件 → 能量（`--verify` 附真值） | 秒级（含加氢） |
+| `ablate` | 数据泄漏消融 | 分钟级 |
+| `all` | 一步到底 | 视数据量而定 |
 
 ```powershell
-# 1) 下载 PDB 结构（内置 16 个小蛋白，X-ray + NMR）
-python -m pdbenergy.cli download
+# 完整流程
+pdbenergy download
+pdbenergy inventory
+pdbenergy ensemble --threads 8
+pdbenergy dataset
+pdbenergy train --model schnet
+pdbenergy evaluate --run-dir outputs/schnet_protein
 
-# 2) 先看看数据里到底有什么
-python -m pdbenergy.cli inventory
-
-# 3) 生成构象系综并用物理力场打标签（最耗时的一步，约 30 分钟/16 个蛋白）
-python -m pdbenergy.cli ensemble --threads 8
-
-# 4) 切分数据集（按蛋白质切分，避免泄漏）
-python -m pdbenergy.cli dataset
-
-# 5) 训练图神经网络 + 手工描述符基线
-python -m pdbenergy.cli train --model schnet
-python -m pdbenergy.cli train --model mlp
-
-# 6) 评估：指标 + 图
-python -m pdbenergy.cli evaluate --run-dir outputs/schnet_protein
-
-# 7) 预测你自己的 PDB 文件
-python -m pdbenergy.cli predict data/raw/1CRN.pdb --verify
+# 直接用自己的结构预测
+pdbenergy predict my_structure.pdb --verify
+pdbenergy predict nmr_ensemble.pdb --max-models 38     # 给整个 NMR 系综打分并排序
 ```
 
-或者一步到底：
+常用开关：`--preset quick|default|thorough`、`--config configs/quick.json`、
+`--ids 1CRN 1L2Y`（只处理指定条目）、`--make` 见 `pdbenergy <子命令> --help`。
+
+### 方式二：现成脚本
 
 ```powershell
-python -m pdbenergy.cli all
+python examples\predict_pdb.py data\raw\1L2Y.pdb --models 3 --verify   # 打分 + 排序 + 对照真值
+python examples\train_from_python.py --epochs 5                        # 用 Python API 训练
+.\scripts\run_pipeline.ps1 -SkipEnsemble                               # 全流程 + 分阶段日志
+python scripts\measure_leakage.py                                      # 泄漏直接测量
+python scripts\write_results.py                                        # 由产物重生成 TeachFlow 第 11 章
 ```
+
+### 方式三：作为库调用
+
+```python
+from pdbenergy.config import Config
+from pdbenergy.dataset import build_bundle, load_ensembles
+from pdbenergy.train import train_model
+from pdbenergy.predict import EnergyPredictor
+
+cfg = Config()
+cfg.model.hidden_dim = 128          # 所有超参数都是 dataclass 字段
+cfg.features.cutoff = 4.5
+cfg.train.epochs = 100
+
+ensembles = load_ensembles("data/interim")
+bundle = build_bundle(ensembles, cfg)        # 按蛋白切分，无泄漏
+result = train_model(bundle, out_dir="outputs/my_run")
+
+predictor = EnergyPredictor("outputs/my_run/checkpoint.pt")
+for pred in predictor.predict_file("my_structure.pdb"):
+    print(pred.predicted_relative_energy, "kcal/mol")
+```
+
+更多例子见 [`examples/`](examples/)。
 
 ## 项目结构
 
@@ -74,8 +116,10 @@ pdbenergy/
   models.py      SchNet 消息传递网络 + MLP 基线
   train.py       训练循环、早停、检查点、指标
   evaluate.py    指标、分组分解、排序能力、全部图表
+  leakage.py     不依赖模型的数据泄漏直接测量
   predict.py     单文件推理：PDB → 能量
   cli.py         命令行入口
+examples/        可运行示例（命令行 / 脚本 / 库三种用法）
 configs/         默认与快速配置（`--config configs/quick.json`）
 scripts/         run_pipeline.ps1（一键全流程）、write_results.py（从产物生成本文档结果章节）
 benchmarks/      物理与模型开销的实测脚本，以及实测数据表
@@ -92,6 +136,11 @@ python -m unittest discover -s tests -v
 # 只跑不需要 OpenMM 的部分（秒级）
 python -m unittest tests.test_pdbio tests.test_ml -v
 ```
+
+CI（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)）分两个 job：
+`tests` 在 Python 3.11 / 3.13 上跑解析与机器学习测试（无 OpenMM、无网络），
+`physics` 安装 OpenMM 并下载 `1CRN` 后跑力场自洽性测试。
+两个 job 都使用 CPU 版 PyTorch，避免把 2.5 GB 的 CUDA 轮子拖进 CI。
 
 测试覆盖了几个容易被忽略的性质：
 

@@ -214,6 +214,8 @@ def cmd_train(args) -> int:
     if args.interactions:
         cfg.model.n_interactions = args.interactions
     cfg.train.device = args.device
+    if getattr(args, "no_cache_graphs", False):
+        cfg.train.cache_graphs = False
 
     ensembles = load_ensembles(args.interim_dir)
     bundle = build_bundle(ensembles, cfg)
@@ -224,6 +226,9 @@ def cmd_train(args) -> int:
         bundle,
         descriptor_mode=(args.model == "mlp"),
         out_dir=run_dir,
+        warm_start_from=getattr(args, "init_from", None),
+        resume_from=getattr(args, "resume", None),
+        recompute_normalisation=getattr(args, "recompute_normalisation", False),
     )
     print(
         f"\nbest epoch {result.best_epoch} | best val MAE {result.best_val_mae:.3f} kcal/mol | "
@@ -475,6 +480,18 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--split-mode", choices=["protein", "frame"])
     p.add_argument("--device", default="auto")
     p.add_argument("--tag", default=None, help="output subdirectory name")
+    p.add_argument("--init-from", default=None, metavar="CHECKPOINT",
+                   help="warm-start from this checkpoint.pt (fresh optimiser/history); "
+                        "use when you have MORE DATA and want to improve on a previous model")
+    p.add_argument("--resume", default=None, metavar="RUN_DIR",
+                   help="continue an interrupted run: restores weights, optimiser state "
+                        "and the epoch counter from that run directory")
+    p.add_argument("--recompute-normalisation", action="store_true",
+                   help="with --init-from/--resume, recompute the target mean/std from the "
+                        "new training split instead of reusing the checkpoint's")
+    p.add_argument("--no-cache-graphs", action="store_true",
+                   help="featurise on the fly instead of caching all graphs in RAM "
+                        "(needed once the dataset exceeds ~20k frames)")
     p.set_defaults(func=cmd_train)
 
     p = sub.add_parser("evaluate", help="metrics and figures for a trained run")

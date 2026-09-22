@@ -1231,6 +1231,81 @@ for head in (self.atom_readout, self.global_head):
 **一般化的教训**：当你把很多个小量**求和**成一个输出时，
 初始化必须保证"求和结果也是小量"。任何"聚合 N 个东西"的输出层都该这样处理。
 
+### 8.13 继续训练：热启动、断点续训，以及一个必须冻结的东西
+
+当你有更多 PDB 文件时，"再训一遍"有三种语义完全不同的做法：
+
+| 做法 | 权重 | 优化器状态 | epoch 计数 | 适用场景 |
+|---|---|---|---|---|
+| 从头训练 | 随机 | 全新 | 从 1 开始 | 换了结构、换了目标 |
+| **热启动** | **从检查点** | 全新 | 从 1 开始 | **数据变多，在旧模型上继续提升** |
+| **断点续训** | 从检查点 | **恢复** | **接着数** | 长训练被中断 |
+
+对应 `train --init-from <ckpt>` 与 `train --resume <run_dir>`；
+`python -m pdbenergy.iterate` 把多轮循环包了起来。
+
+#### 为什么"断点续训"必须单独存优化器状态
+
+AdamW 每个参数维护**两个动量**（一阶矩 $m$、二阶矩 $v$，见 §8.5）。
+只恢复权重、不恢复动量，优化器等于"失忆重启"：自适应步长要重新估计，
+接下来一段会有明显的性能回退。
+
+所以本项目把检查点拆成两个文件：
+
+* `checkpoint.pt` —— 只放**推理**需要的（权重 + 模型/特征配置 + 归一化统计量），保持干净；
+* `train_state.pt` —— 放**继续训练**需要的（优化器状态、epoch 计数、完整历史），
+  体积约 3 倍，但只有续训时才用。
+
+`tcfg.epochs` 的语义也随之明确：**永远是"这次调用再跑多少轮"**，
+不是"总共跑多少轮"。否则续训会静默重复已经跑过的 epoch。
+
+#### 归一化的尺度陷阱（和 §8.12 是同一类问题）
+
+检查点里存着它训练时用的目标 mean/std。如果续训时用**新数据重新算**，
+输出层就处在"按旧单位标定、却在新单位下被评价"的状态——
+前几轮全花在把尺度掰回来，白费。
+
+所以 `--init-from` / `--resume` **默认沿用检查点里的归一化**，并打印新旧对比；
+当新训练集的目标均值偏离旧均值超过 0.25 个旧标准差时给出警告，
+提示你可能该用 `--recompute-normalisation`。
+
+#### 改结构就不能热启动——而且必须**报错**，不能静默
+
+`hidden_dim`、`n_interactions`、`cutoff`、`n_rbf` 里任何一个变了，权重形状就对不上。
+最坏的结果不是报错，而是**只加载了一部分张量、剩下的保持随机**——
+那会得到一个看起来能跑、实际半随机初始化的模型。
+
+所以本项目在 `load_state_dict` **之前**先逐字段比对模型配置和特征配置，
+列出到底哪个字段变了，然后拒绝执行：
+
+```
+cannot continue from 'outputs/old/checkpoint.pt':
+  - feature config differs (n_rbf: 32 -> 64) -> input edge layout changed
+```
+
+**这类"配置兼容性检查"是任何支持续训的训练框架都该有的东西。**
+
+#### 迭代训练里最容易被忽略的一点：**必须冻结切分**
+
+`split_proteins` 是**从蛋白列表推导**切分的。所以每加一批新蛋白，
+切分就会重新洗牌——train/val/test 的成员都变了。
+
+后果是：**跨轮的测试指标不可比**。这一轮 "test MAE 从 120 降到 95"，
+可能完全不是因为模型变好，而只是某个难蛋白恰好被洗出了测试集。
+这和 §9.1 是同一类错误：**让评估集移动，等于把评估作废。**
+
+正确做法（本项目 `iterate.py` 的做法）：
+
+1. 第 1 轮算出切分，**写进 `split.json` 冻结**；
+2. 之后每一轮都读这个文件；
+3. **新出现的蛋白只追加到 train**，绝不进 val/test。
+
+这样测试集在每一轮里都是**同一批蛋白**，指标才真的在度量"模型有没有变好"。
+另外，选最优检查点只看 **val**，test 只报告——见 §9.6。
+
+> 代码：`pdbenergy/iterate.py::freeze_split`、`apply_split`；
+> 兼容性检查在 `pdbenergy/train.py::_check_continuation_compatible`
+
 ---
 
 ## 9. 评估方法学：数据泄漏与指标陷阱
@@ -1342,10 +1417,12 @@ $$\bar\rho = \frac{1}{|\mathcal{P}|}\sum_{p \in \mathcal{P}} \rho_{\text{Spearma
 | `features.py` | ~390 | 结构→图、描述符基线 | `pairwise_distances`, `frame_to_graph`, `global_descriptors`, `ConformerDataset`, `collate_graphs` |
 | `graphcache.py` | ~120 | 图缓存 | `load_or_build`, `feature_signature` |
 | `models.py` | ~290 | SchNet + MLP | `GaussianRBFExpansion`, `InteractionBlock`, `SchNetRegressor`, `scatter_sum` |
-| `train.py` | ~400 | 训练循环、指标、检查点 | `train_model`, `regression_metrics`, `save_checkpoint`, `load_checkpoint` |
+| `train.py` | ~480 | 训练循环、指标、检查点、热启动/续训 | `train_model`, `regression_metrics`, `save_checkpoint`, `load_checkpoint`, `_check_continuation_compatible` |
 | `evaluate.py` | ~430 | 评估与绘图 | `evaluate_run`, `rank_discrimination`, `plot_*` |
 | `predict.py` | ~230 | PDB → 能量推理 | `EnergyPredictor.predict_file` |
-| `cli.py` | ~470 | 命令行 | `main` |
+| `leakage.py` | ~150 | **不依赖模型**地直接测量训练/测试重叠 | `nearest_neighbour_leakage`, `compare_split_modes` |
+| `iterate.py` | ~430 | 迭代训练：冻结切分 + 多轮热启动 + 轮次登记 | `freeze_split`, `apply_split`, `run_rounds`, `IterationRegistry` |
+| `cli.py` | ~500 | 命令行 | `main` |
 
 ### 10.2 完整命令流程
 
@@ -1634,6 +1711,10 @@ python -m pdbenergy.cli predict data/raw/1L2Y.pdb --max-models 5 --verify
 | NMR 帧保留率 0/38 | 把 NMR 重原子坐标覆盖到别的体系继承来的氢上，C–H 键被拉开近 1 Å | 每个模型**重新加氢**，不要搬运氢（§5.8） |
 | 一个大蛋白卡住十几分钟 | NMR 循环按"成功数"计数，被拒绝时会走遍全部 30+ 个模型 | 改为限制**尝试次数**（§5.8） |
 | 每 epoch 110 秒 | 每轮重复 featurisation | 图缓存 + 把 RBF 挪进模型（§8.2） |
+| 续训后前几轮明显变差 | 只恢复了权重、没恢复 AdamW 的两个动量，优化器"失忆重启" | 优化器状态存进 `train_state.pt`（§8.13） |
+| 热启动后损失先炸再降 | 新旧数据集的目标 mean/std 不同，输出层按旧尺度标定 | 默认沿用检查点的归一化；必要时 `--recompute-normalisation`（§8.13） |
+| 换了网络结构后续训"能跑但很差" | 形状不匹配时只加载了部分张量，其余保持随机 | 加载前逐字段比对配置并报错（§8.13） |
+| 每加一批数据"测试指标就变好" | `split_proteins` 从蛋白列表推导切分，加数据会重新洗牌 | 第 1 轮冻结切分，新蛋白只进 train（§8.13） |
 
 ### 12.3 如果能继续做下去
 

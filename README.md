@@ -104,6 +104,62 @@ for pred in predictor.predict_file("my_structure.pdb"):
 
 更多例子见 [`examples/`](examples/)。
 
+## 迭代训练：加数据，看精度真的提升
+
+单次训练回答"这能不能跑"；迭代训练回答"数据变多了，模型有没有变好，怎么看得见"。
+
+```powershell
+# 把新的 PDB 放进 data\raw\，然后跑一轮（会自动打标签 + 重训 + 评估 + 记录）
+python -m pdbenergy.iterate --rounds 1 --build-new --threads 8
+
+# 继续加、继续跑；会自动从上一轮的权重热启动
+python -m pdbenergy.iterate --rounds 3 --build-new --threads 8
+
+# 只看累计的轮次表格
+python -m pdbenergy.iterate --report
+```
+
+它替你处理了两件**很容易骗到自己**的事：
+
+1. **冻结切分** —— 第 1 轮把 train/val/test 的蛋白固定进 `split.json`，
+   之后新增的蛋白**只进 train**。否则测试集每轮都在变，
+   "test 指标变好了"可能只是因为某个难蛋白被换出去了。
+2. **只用验证集选模型** —— `best/` 里放的是验证 MAE 最好的那一轮；
+   测试指标只报告、不参与选择。
+
+产物在 `outputs/iterative/`：`rounds.jsonl`（机器可读）、`rounds.md`（表格）、
+`round_001/…`（每轮检查点、历史、优化器状态）、`best/`。
+
+### 三种"继续训练"的区别
+
+| 命令 | 优化器状态 | epoch 计数 | 用在哪 |
+|---|---|---|---|
+| `train` | 全新 | 从 1 开始 | 从头训练 |
+| `train --init-from <ckpt>` | 全新 | 从 1 开始 | **数据变多了，在旧模型基础上提升** |
+| `train --resume <run_dir>` | **恢复** | **接着数** | 长时间训练被中断，接着跑 |
+| `python -m pdbenergy.iterate` | 自动 | 自动 | 多轮"加数据 → 重训 → 比较"的完整循环 |
+
+`--init-from` 默认**沿用检查点里的目标归一化**（mean/std）：换个尺度会让输出层一开始
+就标定错，前几轮全花在把尺度掰回来。新蛋白分布确实不同时加 `--recompute-normalisation`。
+
+⚠️ **改了网络结构就不能热启动了**（`hidden_dim` / `n_interactions` / `cutoff` / `n_rbf`
+都会改变张量形状）。代码会直接报错并指出是哪个字段变了，不会悄悄只加载一半。
+数据量上去之后想换大模型，就换个 `--out-dir` 从头训——**数据够了，大模型才开始值钱**。
+
+### 扩大数据集时要盯的三件事
+
+| 限制 | 默认值 | 超过会怎样 | 怎么办 |
+|---|---|---|---|
+| `prepare.max_residues` | 120 | 大蛋白被 `inventory` 标为不可用、`ensemble` 跳过 | 调大它；注意大蛋白构建时间超线性增长 |
+| 图缓存内存 | 开启 | 实测 **0.5 MB/帧** 全部读进内存：2 万帧约 10 GB，10 万帧放不下 | 超约 2 万帧时用 `--no-cache-graphs`，改成在线特征化 + `--num-workers` |
+| 并行度 | `--workers 1` | `workers × threads` 超过物理核数会互相抢核，反而更慢 | 4 核 8 线程的机器用 `--workers 4 --threads 2` |
+
+时间上，实测单蛋白打标签 **2–4 分钟**（8 线程），所以 100 个蛋白是几小时量级——
+**分批做、中断了接着跑**：已完成的蛋白写成 `data/interim/<ID>.npz`，重跑会自动跳过。
+
+数据规模上来之后，比调容量更值得先试的是 **RBF 分辨率**
+（`features.n_rbf` 从 32 提到 64~96）——详见 `TeachFlow.md` §12.3 的诊断。
+
 ## 项目结构
 
 ```

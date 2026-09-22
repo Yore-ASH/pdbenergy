@@ -31,6 +31,19 @@ env/
 data/raw/
 data/processed/
 
+# Scratch directories the physics tests and the ensemble debug path write into.
+# data/interim itself IS tracked (see above), so these need explicit rules.
+data/interim/_tests/
+data/interim/_dbg/
+data/interim/*_clean.pdb
+data/interim/*_nmr*.pdb
+
+# Iterative training: per-round run directories accumulate (~0.7 MB each) and are
+# regenerable, so they are ignored. The *evidence* is kept: rounds.jsonl /
+# rounds.md (the round-by-round metrics), split.json (the frozen split) and the
+# best/ checkpoint selected on validation MAE.
+outputs/iterative/round_*/
+
 # ---------------------------------------------------------------------------
 # Run logs (per-stage stdout from scripts/run_pipeline.ps1)
 # ---------------------------------------------------------------------------

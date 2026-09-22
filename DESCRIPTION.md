@@ -156,7 +156,7 @@ $10^5$–$10^7$ 量级），模型学不动高能区是必然的。具体的改�
 ## 快速开始
 
 ```powershell
-git clone <仓库地址> && cd pdbenergy
+git clone https://github.com/Yore-ASH/pdbenergy.git && cd pdbenergy
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[physics]"
 .\.venv\Scripts\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cpu

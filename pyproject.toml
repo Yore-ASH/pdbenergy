@@ -52,8 +52,10 @@ dev = ["pytest>=8.0"]
 pdbenergy = "pdbenergy.cli:main"
 
 [project.urls]
-Documentation = "https://github.com/OWNER/pdbenergy/blob/main/TeachFlow.md"
-Repository = "https://github.com/OWNER/pdbenergy"
+Homepage = "https://github.com/Yore-ASH/pdbenergy"
+Documentation = "https://github.com/Yore-ASH/pdbenergy/blob/main/TeachFlow.md"
+Repository = "https://github.com/Yore-ASH/pdbenergy"
+Issues = "https://github.com/Yore-ASH/pdbenergy/issues"
 
 [tool.setuptools]
 packages = ["pdbenergy"]

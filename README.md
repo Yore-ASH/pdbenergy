@@ -24,7 +24,7 @@
 ## 安装
 
 ```powershell
-git clone <你的仓库地址> && cd pdbenergy
+git clone https://github.com/Yore-ASH/pdbenergy.git && cd pdbenergy
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[physics]"
 # CPU 版 PyTorch（Windows 上 PyPI 的 torch 就是 CPU 版；Linux 上需要显式指定）

@@ -1,0 +1,35 @@
+[
+  {
+    "variant": "base32_end5",
+    "overrides": [],
+    "val_mae": 129.5333748641026,
+    "test_mae": 121.38937867028541,
+    "test_r2": 0.0015750710762295617,
+    "test_spearman": 0.4296085302950291,
+    "within_protein_rho": 0.16886689724488996,
+    "train_loss": 0.31580854218810706,
+    "prediction_span_ratio": 0.023903823142161072,
+    "epochs": 4,
+    "wall_time_s": 358.3390920162201,
+    "config": "hidden=64 int=3 n_rbf=32 cutoff=4.0 rbf_end=5.0 max_nbr=32",
+    "constant_baseline_mae": 118.28174922852877
+  },
+  {
+    "variant": "rbf96_end4",
+    "overrides": [
+      "features.n_rbf: 32 -> 96",
+      "features.rbf_end: 5.0 -> 4.0"
+    ],
+    "val_mae": 114.2953235766979,
+    "test_mae": 102.00409564184991,
+    "test_r2": 0.0025857939883192627,
+    "test_spearman": -0.03649725560480709,
+    "within_protein_rho": 0.18396711228802554,
+    "train_loss": 0.30929159896661623,
+    "prediction_span_ratio": 0.019560401057940796,
+    "epochs": 4,
+    "wall_time_s": 867.7139930725098,
+    "config": "hidden=64 int=3 n_rbf=96 cutoff=4.0 rbf_end=4.0 max_nbr=32",
+    "constant_baseline_mae": 118.28174922852877
+  }
+]

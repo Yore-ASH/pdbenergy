@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pdbenergy"
+version = "0.1.0"
+description = "Learn a PyTorch graph-neural-network surrogate for protein conformational energy from PDB files"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = [
+  "protein",
+  "conformational-energy",
+  "machine-learning-potential",
+  "graph-neural-network",
+  "schnet",
+  "molecular-dynamics",
+  "openmm",
+  "pytorch",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "Topic :: Scientific/Engineering :: Chemistry",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+
+# Core dependencies are deliberately small: NumPy + PyTorch + Matplotlib is
+# enough to train and evaluate.  The *physics* extra adds OpenMM + PDBFixer,
+# which is what generates the ground-truth energy labels.
+dependencies = [
+  "numpy>=1.26",
+  "torch>=2.4",
+  "matplotlib>=3.8",
+]
+
+[project.optional-dependencies]
+physics = ["openmm>=8.1", "pdbfixer>=1.9"]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+# After `pip install -e .` this makes the CLI available as a command:
+#   pdbenergy --help
+pdbenergy = "pdbenergy.cli:main"
+
+[project.urls]
+Documentation = "https://github.com/OWNER/pdbenergy/blob/main/TeachFlow.md"
+Repository = "https://github.com/OWNER/pdbenergy"
+
+[tool.setuptools]
+packages = ["pdbenergy"]
+
+[tool.setuptools.package-data]
+pdbenergy = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Physics tests need OpenMM and a downloaded PDB entry; they skip cleanly
+# when either is missing, so a bare `pytest` always works.
+addopts = "-q"

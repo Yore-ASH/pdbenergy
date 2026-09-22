@@ -1,0 +1,14 @@
+{
+  "pdb_id": "1UBQ",
+  "n_frames": 49,
+  "n_atoms": 1231,
+  "reference_energy_kcal": -3584.6728009367885,
+  "energy_min_kcal": -3584.6728009367885,
+  "energy_max_kcal": -2693.889478053897,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "torsion": 43
+  },
+  "sequence": "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGGXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+}

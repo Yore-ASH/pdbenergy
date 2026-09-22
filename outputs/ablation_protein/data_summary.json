@@ -1,0 +1,208 @@
+{
+  "target": "relative",
+  "split_mode": "protein",
+  "n_proteins": 14,
+  "n_samples": 730,
+  "norm_mean": 78.79341981043311,
+  "norm_std": 144.89205705237282,
+  "proteins": {
+    "train": [
+      "1CRN",
+      "1ENH",
+      "1FME",
+      "1L2Y",
+      "1SHG",
+      "2CI2"
+    ],
+    "val": [
+      "1PGB",
+      "1RIS",
+      "1UBQ",
+      "1VII"
+    ],
+    "test": [
+      "1BDD",
+      "2GB1",
+      "3GB1",
+      "5PTI"
+    ]
+  },
+  "samples": {
+    "train": 323,
+    "val": 199,
+    "test": 208
+  },
+  "per_protein": {
+    "1BDD": {
+      "n_frames": 54,
+      "n_atoms": 941,
+      "sequence_length": 60,
+      "reference_energy_kcal": -2721.0592525084917,
+      "dE_max_kcal": 708.6275826372414,
+      "sources": {
+        "md300K": 3,
+        "md450K": 3,
+        "torsion": 48
+      }
+    },
+    "1CRN": {
+      "n_frames": 54,
+      "n_atoms": 642,
+      "sequence_length": 46,
+      "reference_energy_kcal": -1456.4338020353362,
+      "dE_max_kcal": 529.7208619978429,
+      "sources": {
+        "md300K": 3,
+        "md450K": 3,
+        "torsion": 48
+      }
+    },
+    "1ENH": {
+      "n_frames": 52,
+      "n_atoms": 947,
+      "sequence_length": 87,
+      "reference_energy_kcal": -4318.851419903077,
+      "dE_max_kcal": 700.5204551406141,
+      "sources": {
+        "md300K": 3,
+        "md450K": 3,
+        "torsion": 46
+      }
+    },
+    "1FME": {
+      "n_frames": 57,
+      "n_atoms": 504,
+      "sequence_length": 28,
+      "reference_energy_kcal": -2047.364283443517,
+      "dE_max_kcal": 403.9947419899904,
+      "sources": {
+        "md300K": 3,
+        "md450K": 3,
+        "nmr": 3,
+        "torsion": 48
+      }
+    },
+    "1L2Y": {
+      "n_frames": 57,
+      "n_atoms": 304,
+      "sequence_length": 20,
+      "reference_energy_kcal": -723.2443689961082,
+      "dE_max_kcal": 248.31563686187155,
+      "sources": {
+        "md300K": 3,
+        "md450K": 3,
+        "nmr": 3,
+        "torsion": 48
+      }
+    },
+    "1PGB": {
+      "n_frames": 46,
+      "n_atoms": 855,
+      "sequence_length": 80,
+      "reference_energy_kcal": -2063.521605581198,
+      "dE_max_kcal": 641.8123900894857,
+      "sources": {
+        "md300K": 3,
+        "md450K": 3,
+        "torsion": 40
+      }
+    },
+    "1RIS": {
+      "n_frames": 50,
+      "n_atoms": 1647,
+      "sequence_length": 143,
+      "reference_energy_kcal": -6449.803311397754,
+      "dE_max_kcal": 1169.6216161869079,
+      "sources": {
+        "md300K": 3,
+        "md450K": 3,
+        "torsion": 44
+      }
+    },
+    "1SHG": {
+      "n_frames": 54,
+      "n_atoms": 955,
+      "sequence_length": 57,
+      "reference_energy_kcal": -2400.034533736261,
+      "dE_max_kcal": 697.3498264282964,
+      "sources": {
+        "md300K": 3,
+        "md450K": 3,
+        "torsion": 48
+      }
+    },
+    "1UBQ": {
+      "n_frames": 49,
+      "n_atoms": 1231,
+      "sequence_length": 134,
+      "reference_energy_kcal": -3584.6728009367885,
+      "dE_max_kcal": 890.7833228828913,
+      "sources": {
+        "md300K": 3,
+        "md450K": 3,
+        "torsion": 43
+      }
+    },
+    "1VII": {
+      "n_frames": 54,
+      "n_atoms": 596,
+      "sequence_length": 36,
+      "reference_energy_kcal": -1307.5349138982672,
+      "dE_max_kcal": 404.91057471957185,
+      "sources": {
+        "md300K": 3,
+        "md450K": 3,
+        "torsion": 48
+      }
+    },
+    "2CI2": {
+      "n_frames": 49,
+      "n_atoms": 1076,
+      "sequence_length": 129,
+      "reference_energy_kcal": -3063.795338333663,
+      "dE_max_kcal": 816.9802601992014,
+      "sources": {
+        "md300K": 3,
+        "md450K": 3,
+        "torsion": 43
+      }
+    },
+    "2GB1": {
+      "n_frames": 50,
+      "n_atoms": 855,
+      "sequence_length": 56,
+      "reference_energy_kcal": -2108.0932887215718,
+      "dE_max_kcal": 681.7385066912723,
+      "sources": {
+        "md300K": 3,
+        "md450K": 3,
+        "torsion": 44
+      }
+    },
+    "3GB1": {
+      "n_frames": 50,
+      "n_atoms": 855,
+      "sequence_length": 56,
+      "reference_energy_kcal": -2129.8965056365178,
+      "dE_max_kcal": 627.7384573483066,
+      "sources": {
+        "md300K": 3,
+        "md450K": 3,
+        "nmr": 3,
+        "torsion": 41
+      }
+    },
+    "5PTI": {
+      "n_frames": 54,
+      "n_atoms": 892,
+      "sequence_length": 123,
+      "reference_energy_kcal": -2814.6741161951145,
+      "dE_max_kcal": 683.0688023117223,
+      "sources": {
+        "md300K": 3,
+        "md450K": 3,
+        "torsion": 48
+      }
+    }
+  }
+}

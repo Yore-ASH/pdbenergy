@@ -1,0 +1,14 @@
+{
+  "pdb_id": "2CI2",
+  "n_frames": 49,
+  "n_atoms": 1076,
+  "reference_energy_kcal": -3063.795338333663,
+  "energy_min_kcal": -3063.327529013537,
+  "energy_max_kcal": -2246.3472688143356,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "torsion": 43
+  },
+  "sequence": "NLKTEWPELVGKSVEEAKKVILQDKPEAQIIVLPVGTIVTMEYRIDRVRLFVDKLDNIAEVPRVGXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+}

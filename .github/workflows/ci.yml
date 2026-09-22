@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Fast job: parser + machine-learning property tests. No OpenMM, no network.
+  # This is the one that must pass on every push.
+  # ---------------------------------------------------------------------------
+  tests:
+    name: unit tests (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install CPU PyTorch
+        # The default Linux wheel bundles CUDA (~2.5 GB); the CPU wheel is a
+        # fraction of that and is all these tests need.
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install project
+        run: pip install -e ".[dev]"
+
+      - name: Byte-compile every module
+        run: python -m compileall -q pdbenergy scripts
+
+      - name: Run parser and ML tests
+        run: python -m unittest tests.test_pdbio tests.test_ml -v
+
+  # ---------------------------------------------------------------------------
+  # Physics job: the OpenMM-backed tests. Slower, and it downloads one PDB entry
+  # from RCSB, so it is a separate job that can fail without blocking the rest.
+  # ---------------------------------------------------------------------------
+  physics:
+    name: physics tests (OpenMM)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install CPU PyTorch
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install project with the physics extra
+        run: pip install -e ".[dev,physics]"
+
+      - name: Fetch the test structure
+        # data/raw/ is gitignored on purpose; the tests skip cleanly if this
+        # fails, so a network hiccup cannot turn the build red for the wrong
+        # reason - but we would rather actually run them.
+        run: python -m pdbenergy.cli download --ids 1CRN
+
+      - name: Run physics tests
+        run: python -m unittest tests.test_physics -v
+
+      - name: End-to-end smoke test of the CLI
+        run: |
+          python -m pdbenergy.cli inventory
+          python -m pdbenergy.cli dataset --interim-dir data/interim || true
+          python -m pdbenergy.cli --help

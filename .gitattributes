@@ -1,0 +1,19 @@
+# Normalise line endings so the repository behaves the same on Windows and Linux.
+# The project is developed on Windows but CI runs on ubuntu-latest.
+* text=auto eol=lf
+
+# Windows-native scripts keep CRLF.
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+
+# Binary artifacts: never touch, never diff.
+*.png binary
+*.jpg binary
+*.pt binary
+*.npz binary
+*.gz binary
+
+# Keep generated/marked-up files out of language statistics.
+TeachFlow.md linguist-documentation
+benchmarks/README.md linguist-documentation
+examples/README.md linguist-documentation

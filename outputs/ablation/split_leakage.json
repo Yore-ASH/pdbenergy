@@ -1,0 +1,21 @@
+{
+  "protein": {
+    "model": "mlp",
+    "test_mae": 105.97422208947751,
+    "test_rmse": 166.67453201705635,
+    "test_r2": -0.001794964231787377,
+    "test_spearman": NaN,
+    "best_val_mae": 117.2910970206276,
+    "run_dir": "outputs\\ablation_protein"
+  },
+  "frame": {
+    "model": "mlp",
+    "test_mae": 111.27887711571238,
+    "test_rmse": 185.78548753525973,
+    "test_r2": -0.008319900347126152,
+    "test_spearman": 0.016419320196152002,
+    "best_val_mae": 113.96943124040887,
+    "run_dir": "outputs\\ablation_frame"
+  },
+  "leakage_inflation_factor": 0.9523300812901008
+}

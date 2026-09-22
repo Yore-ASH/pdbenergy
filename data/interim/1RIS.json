@@ -1,0 +1,14 @@
+{
+  "pdb_id": "1RIS",
+  "n_frames": 50,
+  "n_atoms": 1647,
+  "reference_energy_kcal": -6449.803311397754,
+  "energy_min_kcal": -6449.803311397754,
+  "energy_max_kcal": -5280.181695210847,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "torsion": 44
+  },
+  "sequence": "MRRYEVNIVLNPNLDQSQLALEKEIIQRALENYGARVEKVEELGLRRLAYPIAKDPQGYFLWYQVEMPEDRVNDLARELRIRDNVRRVMVVKSQEPFXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+}

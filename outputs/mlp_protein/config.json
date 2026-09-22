@@ -1,0 +1,100 @@
+{
+  "paths": {
+    "raw_dir": "data/raw",
+    "interim_dir": "data/interim",
+    "processed_dir": "data/processed",
+    "outputs_dir": "outputs"
+  },
+  "prepare": {
+    "protein_only": true,
+    "add_hydrogens": true,
+    "ph": 7.0,
+    "add_missing_residues": false,
+    "max_residues": 120
+  },
+  "ensemble": {
+    "seed": 20240517,
+    "torsion_levels": [
+      1.0,
+      1.5,
+      2.0,
+      3.0
+    ],
+    "n_torsion_per_level": 12,
+    "torsion_min_deg": 55.0,
+    "torsion_max_deg": 165.0,
+    "moves_min": 1,
+    "moves_max": 3,
+    "cartesian_jitter": 0.0,
+    "minimise_fraction": 0.0,
+    "partial_minimise_iterations": 40,
+    "reference_minimise_iterations": 120,
+    "max_relative_energy": 250.0,
+    "md_max_relative_energy": 1500.0,
+    "max_attempt_factor": 4,
+    "md_temperatures": [
+      300.0,
+      450.0
+    ],
+    "md_ps_per_temperature": 0.6,
+    "md_timestep_fs": 2.0,
+    "md_save_every_ps": 0.2,
+    "use_nmr_models": true,
+    "max_nmr_models": 3,
+    "nmr_minimise_iterations": 60
+  },
+  "label": {
+    "forcefield_files": [
+      "amber14-all.xml",
+      "implicit/gbn2.xml"
+    ],
+    "implicit_solvent": "OBC2",
+    "solute_dielectric": 1.0,
+    "solvent_dielectric": 78.5,
+    "nonbonded_method": "CutoffNonPeriodic",
+    "cutoff_nm": 1.0,
+    "constraints": "HBonds",
+    "energy_unit": "kcal/mol"
+  },
+  "features": {
+    "cutoff": 4.0,
+    "n_rbf": 32,
+    "rbf_start": 0.0,
+    "rbf_end": 5.0,
+    "max_neighbors": 32,
+    "use_bond_feature": true
+  },
+  "model": {
+    "kind": "mlp",
+    "hidden_dim": 64,
+    "n_interactions": 3,
+    "cutoff": 4.0,
+    "n_layers_mlp": 3,
+    "dropout": 0.0,
+    "per_atom_output": true
+  },
+  "train": {
+    "seed": 1234,
+    "epochs": 20,
+    "batch_size": 16,
+    "learning_rate": 0.0005,
+    "weight_decay": 1e-05,
+    "val_fraction": 0.25,
+    "test_fraction": 0.25,
+    "patience": 10,
+    "min_delta": 0.0001,
+    "grad_clip": 10.0,
+    "num_workers": 0,
+    "device": "auto",
+    "cache_graphs": true,
+    "graph_cache_dir": "data/processed/graph_cache",
+    "target": "relative",
+    "split_mode": "protein",
+    "loss": "huber",
+    "huber_delta": 1.0,
+    "scheduler": "plateau",
+    "predict_reference": false,
+    "log_every": 10
+  },
+  "pdb_ids": []
+}

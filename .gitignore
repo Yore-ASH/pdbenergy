@@ -1,0 +1,53 @@
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# ---------------------------------------------------------------------------
+# Data
+#
+# data/raw        raw PDB entries, re-downloadable with:
+#                   python -m pdbenergy.cli download
+# data/processed  the featurised-graph cache (~350 MB for 14 proteins). Pure
+#                 cache: rebuilt automatically in ~90 s on the next training run.
+#
+# data/interim IS committed on purpose: it holds the physics-labelled
+# conformer ensembles (a few MB) that take ~30 minutes of OpenMM work to
+# produce. Committing them lets anyone retrain immediately.
+# ---------------------------------------------------------------------------
+data/raw/
+data/processed/
+
+# ---------------------------------------------------------------------------
+# Run logs (per-stage stdout from scripts/run_pipeline.ps1)
+# ---------------------------------------------------------------------------
+logs/
+
+# ---------------------------------------------------------------------------
+# Trained weights are ~170 KB each and ARE committed so the shipped model can be
+# used without retraining. Uncomment to keep the repository code-only.
+# ---------------------------------------------------------------------------
+# outputs/**/checkpoint.pt
+
+# ---------------------------------------------------------------------------
+# Editors / OS
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini

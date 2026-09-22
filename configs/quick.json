@@ -1,0 +1,36 @@
+{
+  "_comment": [
+    "Fast preset for a laptop smoke test: a few minutes instead of tens of",
+    "minutes.  Sampling is thin, so the model trained on it is a demonstration,",
+    "not a result.  Use configs/default.json for real work.",
+    "Usage:  python -m pdbenergy.cli ensemble --config configs/quick.json"
+  ],
+  "prepare": {
+    "ph": 7.0,
+    "add_missing_residues": false
+  },
+  "ensemble": {
+    "torsion_levels": [1.0, 2.0],
+    "n_torsion_per_level": 6,
+    "minimise_fraction": 0.0,
+    "reference_minimise_iterations": 60,
+    "max_attempt_factor": 3,
+    "md_temperatures": [300.0],
+    "md_ps_per_temperature": 0.2,
+    "md_save_every_ps": 0.2,
+    "use_nmr_models": false,
+    "max_nmr_models": 0
+  },
+  "label": {
+    "nonbonded_method": "CutoffNonPeriodic",
+    "cutoff_nm": 1.0
+  },
+  "train": {
+    "epochs": 30,
+    "batch_size": 8,
+    "patience": 10,
+    "val_fraction": 0.34,
+    "test_fraction": 0.33,
+    "log_every": 1
+  }
+}

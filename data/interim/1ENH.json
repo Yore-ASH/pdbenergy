@@ -1,0 +1,14 @@
+{
+  "pdb_id": "1ENH",
+  "n_frames": 52,
+  "n_atoms": 947,
+  "reference_energy_kcal": -4318.851419903077,
+  "energy_min_kcal": -4318.851419903077,
+  "energy_max_kcal": -3618.330964762463,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "torsion": 46
+  },
+  "sequence": "RPRTAFSSEQLARLKREFNENRYLTERRRQQLSSELGLNEAQIKIWFQNKRAKIXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+}

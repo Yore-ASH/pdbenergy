@@ -1,0 +1,14 @@
+{
+  "pdb_id": "1SHG",
+  "n_frames": 54,
+  "n_atoms": 955,
+  "reference_energy_kcal": -2400.034533736261,
+  "energy_min_kcal": -2400.034533736261,
+  "energy_max_kcal": -1702.6847073079646,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "torsion": 48
+  },
+  "sequence": "KELVLALYDYQEKSPREVTMKKGDILTLLNSTNKDWWKVEVNDRQGFVPAAYVKKLD"
+}

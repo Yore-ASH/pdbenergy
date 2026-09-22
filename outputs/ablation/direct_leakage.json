@@ -1,0 +1,22 @@
+{
+  "protein": {
+    "n_train": 323,
+    "n_test": 208,
+    "same_protein_fraction": 0.0,
+    "median_nn_distance": 4.774577942010131,
+    "min_nn_distance": 4.250093262160861,
+    "p05_nn_distance": 4.317936822848499,
+    "near_duplicate_fraction": 0.0,
+    "median_cross_protein_distance": 4.774577942010131
+  },
+  "frame": {
+    "n_train": 366,
+    "n_test": 182,
+    "same_protein_fraction": 0.9725274725274725,
+    "median_nn_distance": 0.04420615463133361,
+    "min_nn_distance": 1.884864366154897e-07,
+    "p05_nn_distance": 0.003439072648775471,
+    "near_duplicate_fraction": 0.5274725274725275,
+    "median_cross_protein_distance": 0.04420615463133361
+  }
+}

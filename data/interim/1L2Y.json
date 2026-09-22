@@ -1,0 +1,15 @@
+{
+  "pdb_id": "1L2Y",
+  "n_frames": 57,
+  "n_atoms": 304,
+  "reference_energy_kcal": -723.2443689961082,
+  "energy_min_kcal": -723.2324376748356,
+  "energy_max_kcal": -474.9168008129641,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "nmr": 3,
+    "torsion": 48
+  },
+  "sequence": "NLYIQWLKDGGPSSGRPPPS"
+}

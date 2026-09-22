@@ -1,0 +1,14 @@
+{
+  "pdb_id": "2GB1",
+  "n_frames": 50,
+  "n_atoms": 855,
+  "reference_energy_kcal": -2108.0932887215718,
+  "energy_min_kcal": -2108.0932887215718,
+  "energy_max_kcal": -1426.3547820302995,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "torsion": 44
+  },
+  "sequence": "MTYKLILNGKTLKGETTTEAVDAATAEKVFKQYANDNGVDGEWTYDDATKTFTVTE"
+}

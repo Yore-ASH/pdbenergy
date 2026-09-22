@@ -1,0 +1,17 @@
+# Core scientific stack.
+# torch is installed from the CPU wheel index in this project:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+torch>=2.4
+numpy>=1.26
+matplotlib>=3.8
+
+# Physics engine that produces the ground-truth energy labels.
+# OpenMM ships the AMBER14 force field and the GBn2 implicit solvent XML files;
+# PDBFixer repairs structures and adds hydrogens.
+openmm>=8.1
+pdbfixer>=1.9
+
+# Optional: faster/better PDB parsing and analysis. Not required - this project
+# ships its own parser so that the data path has no hidden dependencies.
+# biopython>=1.83
+# scipy>=1.11

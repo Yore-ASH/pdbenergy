@@ -1,0 +1,14 @@
+{
+  "pdb_id": "5PTI",
+  "n_frames": 54,
+  "n_atoms": 892,
+  "reference_energy_kcal": -2814.6741161951145,
+  "energy_min_kcal": -2814.6741161951145,
+  "energy_max_kcal": -2131.6053138833922,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "torsion": 48
+  },
+  "sequence": "RPDFCLEPPYTGPCKARIIRYFYNAKAGLCQTFVYGGCRAKRNNFKSAEDCMRTCGGAXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+}

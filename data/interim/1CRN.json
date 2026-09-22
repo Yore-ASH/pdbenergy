@@ -1,0 +1,14 @@
+{
+  "pdb_id": "1CRN",
+  "n_frames": 54,
+  "n_atoms": 642,
+  "reference_energy_kcal": -1456.4338020353362,
+  "energy_min_kcal": -1456.4338020353362,
+  "energy_max_kcal": -926.7129400374932,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "torsion": 48
+  },
+  "sequence": "TTCCPSIVARSNFNVCRLPGTPEAICATYTGCIIIPGATCPGDYAN"
+}

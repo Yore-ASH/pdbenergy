@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pdbenergy"
 version = "0.1.0"
-description = "Learn a PyTorch graph-neural-network surrogate for protein conformational energy from PDB files"
+description = "Learn a PyTorch graph-neural-network surrogate for protein conformational energy from PDB files, with physics-generated labels and a from-scratch tutorial"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }

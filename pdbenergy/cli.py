@@ -116,17 +116,62 @@ def cmd_download(args) -> int:
 def cmd_inventory(args) -> int:
     from .prepare import inventory, print_inventory, write_json
 
-    reports = inventory(args.raw_dir, max_residues=args.max_residues)
+    reports = inventory(
+        args.raw_dir, max_residues=args.max_residues, min_residues=args.min_residues
+    )
     if not reports:
         print(f"no PDB files in {args.raw_dir!r}; run `download` first")
         return 1
-    print_inventory(reports)
+
     usable = [r for r in reports if r.is_usable]
-    print(f"\n{len(usable)}/{len(reports)} entries usable")
+    rejected = [r for r in reports if not r.is_usable]
+
+    # Printing 2700 rows helps nobody; below ~60 entries the detail is worth it.
+    if len(reports) <= 60 and not args.no_table:
+        print_inventory(reports)
+    elif args.no_table:
+        pass
+
+    if rejected:
+        import collections
+
+        def bucket(reason: str) -> str:
+            for marker in (" exceeds", " is below", " (multi-chain"):
+                if marker in reason:
+                    head, _, tail = reason.partition(marker)
+                    return f"{head}{marker.rstrip()}{tail.split('=')[-1] if '=' in tail else ''}"
+            return reason
+
+        counts = collections.Counter(bucket(r.reason) for r in rejected)
+        print(f"\n排除原因（共 {len(rejected)} 条）：")
+        for reason, n in counts.most_common(8):
+            print(f"  {n:>5}  {reason}")
+
+    over_cap = [r for r in rejected if "max_residues" in r.reason]
+    if over_cap:
+        print(
+            f"\n其中 {len(over_cap)} 条只是被 max_residues={args.max_residues} 挡住。"
+            f"\n放宽上限可多收："
+        )
+        for cap in (200, 300, 500):
+            extra = sum(1 for r in over_cap if r.n_residues <= cap)
+            print(f"  max_residues={cap:<4} -> 再多 {extra} 条")
+
+    total_res = sorted(r.n_residues for r in usable)
+    if total_res:
+        print(
+            f"\n{len(usable)}/{len(reports)} 条可用"
+            f"（残基数 中位数 {total_res[len(total_res)//2]}，"
+            f"p95 {total_res[int(0.95 * (len(total_res) - 1))]}，最大 {total_res[-1]}）"
+        )
+    else:
+        print(f"\n0/{len(reports)} 条可用")
+
     write_json(
         os.path.join(args.outputs_dir, "inventory.json"),
         [r.to_dict() for r in reports],
     )
+    print(f"完整报告 -> {os.path.join(args.outputs_dir, 'inventory.json')}")
     return 0
 
 
@@ -452,6 +497,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("inventory", help="report what is inside data/raw")
     p.add_argument("--max-residues", type=int, default=120)
+    p.add_argument("--min-residues", type=int, default=10)
+    p.add_argument("--no-table", action="store_true",
+                   help="skip the per-entry table (useful for thousands of files)")
     p.set_defaults(func=cmd_inventory)
 
     p = sub.add_parser("ensemble", help="generate and physics-label conformations")

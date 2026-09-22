@@ -122,7 +122,79 @@ class EntryReport:
         return asdict(self)
 
 
-def inventory(raw_dir: str, *, max_residues: int = 120) -> list[EntryReport]:
+def entry_is_usable(
+    structure: Structure,
+    *,
+    max_residues: int = 120,
+    min_residues: int = 10,
+    max_chains: int = 4,
+) -> tuple[bool, str]:
+    """Decide whether an entry is worth spending OpenMM time on.
+
+    This is the single source of truth for that decision, shared by
+    :func:`inventory` (which only *reports* it) and by the labelling path (which
+    must actually *obey* it).  Keeping one function matters: ``max_residues`` used
+    to be enforced only in the report, so ``ensemble`` would still be handed a
+    9000-residue entry and run for ever.
+    """
+    clean = protein_only(structure, keep_hydrogens=True)
+    n_res = clean.n_residues()
+    chains = {a.chain for a in clean.atoms}
+    if n_res == 0:
+        return False, "no standard amino-acid residues"
+    if n_res > max_residues:
+        return False, f"{n_res} residues exceeds max_residues={max_residues}"
+    if n_res < min_residues:
+        return False, f"{n_res} residues is below min_residues={min_residues}"
+    if len(chains) > max_chains:
+        return False, f"{len(chains)} chains (multi-chain assemblies unsupported)"
+    return True, ""
+
+
+def select_usable_entries(
+    raw_dir: str,
+    *,
+    max_residues: int = 120,
+    min_residues: int = 10,
+    already_labelled_dir: str | None = None,
+) -> tuple[dict[str, str], list[EntryReport]]:
+    """Return ``(paths_to_label, reports)`` for the entries worth labelling.
+
+    Anything already having an ``<ID>.npz`` in ``already_labelled_dir`` is skipped,
+    which is what makes a large labelling job resumable across sessions.
+    """
+    selected: dict[str, str] = {}
+    reports: list[EntryReport] = []
+    for pdb_id, path in discover_pdb_files(raw_dir).items():
+        if already_labelled_dir and os.path.exists(
+            os.path.join(already_labelled_dir, f"{pdb_id}.npz")
+        ):
+            continue
+        try:
+            models = read_pdb(path)
+        except Exception as exc:
+            reports.append(EntryReport(pdb_id, path, os.path.getsize(path), 0, 0, 0, 0, 0,
+                                       "", "", [], False, f"parse error: {exc}"))
+            continue
+        first = models[0]
+        usable, reason = entry_is_usable(first, max_residues=max_residues,
+                                        min_residues=min_residues)
+        clean = protein_only(first, keep_hydrogens=True)
+        reports.append(EntryReport(
+            pdb_id=pdb_id, path=path, file_size=os.path.getsize(path),
+            n_models=len(models), n_atoms=len(first), n_protein_atoms=len(clean),
+            n_residues=clean.n_residues(), n_chains=len({a.chain for a in clean.atoms}),
+            sequence="".join(clean.sequence().values()),
+            experiment="", hetatm_residues=[], is_usable=usable, reason=reason,
+        ))
+        if usable:
+            selected[pdb_id] = path
+    return selected, reports
+
+
+def inventory(
+    raw_dir: str, *, max_residues: int = 120, min_residues: int = 10
+) -> list[EntryReport]:
     """Summarise every PDB file in ``raw_dir`` and flag the unusable ones."""
     reports: list[EntryReport] = []
     for pdb_id, path in discover_pdb_files(raw_dir).items():
@@ -139,13 +211,9 @@ def inventory(raw_dir: str, *, max_residues: int = 120) -> list[EntryReport]:
         residue_names = sorted({a.resname for a in first.atoms if a.record == "HETATM"})
         n_res = clean.n_residues()
         chains = {a.chain for a in clean.atoms}
-        usable, reason = True, ""
-        if n_res == 0:
-            usable, reason = False, "no standard amino-acid residues"
-        elif n_res > max_residues:
-            usable, reason = False, f"{n_res} residues exceeds max_residues={max_residues}"
-        elif len(chains) > 4:
-            usable, reason = False, f"{len(chains)} chains (multi-chain assemblies unsupported)"
+        usable, reason = entry_is_usable(
+            first, max_residues=max_residues, min_residues=min_residues
+        )
 
         experiment = ""
         try:

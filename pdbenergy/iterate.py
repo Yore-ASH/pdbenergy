@@ -247,13 +247,78 @@ def _prediction_span_ratio(report: dict) -> float:
     return float(pred_span / true_span) if true_span else float("nan")
 
 
-def _new_pdb_files(raw_dir: str, interim_dir: str) -> dict[str, str]:
-    """PDB files in ``data/raw`` that do not have a labelled ensemble yet."""
-    return {
-        pid: path
-        for pid, path in discover_pdb_files(raw_dir).items()
-        if not os.path.exists(os.path.join(interim_dir, f"{pid}.npz"))
-    }
+def _new_pdb_files(
+    raw_dir: str,
+    interim_dir: str,
+    *,
+    max_residues: int,
+    min_residues: int,
+    verbose: bool = True,
+) -> dict[str, str]:
+    """PDB files in ``data/raw`` that are worth labelling and have no ensemble yet.
+
+    The residue bounds are applied **here**, before anything reaches OpenMM.  This
+    is the difference between a job that finishes and one that silently tries to
+    parameterise a 9000-residue assembly: parsing 2741 files takes a couple of
+    minutes, whereas discovering the problem halfway through the physics would
+    cost days.
+    """
+    from .prepare import select_usable_entries
+
+    selected, reports = select_usable_entries(
+        raw_dir, max_residues=max_residues, min_residues=min_residues,
+        already_labelled_dir=interim_dir,
+    )
+    if verbose and reports:
+        import collections
+
+        rejected = collections.Counter(
+            r.reason.split(" exceeds")[0].split(" is below")[0] for r in reports
+            if not r.is_usable
+        )
+        if rejected:
+            summary = ", ".join(f"{n} x {why}" for why, n in rejected.most_common(4))
+            print(f"  filtered out {sum(rejected.values())} entry/entries: {summary}",
+                  flush=True)
+    return selected
+
+
+#: Measured on the 14-protein set: ~0.5 MB of cached graph per conformation
+#: (edge index as int64 dominates).  Used only to *predict* the footprint.
+BYTES_PER_CACHED_FRAME = 0.5 * 1024 * 1024
+
+
+def should_cache(interim_dir: str, budget_gb: float) -> tuple[bool, str]:
+    """Decide whether the graph cache can fit, from the labelled data on disk.
+
+    The cache holds every graph in RAM as one dict, so it scales linearly with
+    the number of conformations.  It is a large win (featurisation is ~150 ms per
+    frame, paid *every epoch*), but past a few tens of thousands of frames it is
+    simply an out-of-memory error waiting to happen - and it fails only *after*
+    spending hours building the cache.  So the decision is made up front.
+    """
+    if not os.path.isdir(interim_dir):
+        return True, "no labelled data yet"
+    frames = 0
+    for name in os.listdir(interim_dir):
+        if not name.endswith(".npz"):
+            continue
+        try:
+            with np.load(os.path.join(interim_dir, name)) as data:
+                frames += int(data["coords"].shape[0])
+        except Exception:
+            continue
+    if frames == 0:
+        return True, "no labelled data yet"
+    estimated_gb = frames * BYTES_PER_CACHED_FRAME / (1024 ** 3)
+    if estimated_gb > budget_gb:
+        return False, (
+            f"{frames:,} conformations would need about {estimated_gb:.0f} GB of RAM "
+            f"(budget {budget_gb:.0f} GB). Featurising on the fly instead; add "
+            f"--num-workers to parallelise it, or raise --cache-budget if you really "
+            f"have the memory."
+        )
+    return True, f"{frames:,} conformations, about {estimated_gb:.1f} GB of RAM"
 
 
 def run_rounds(
@@ -283,11 +348,17 @@ def run_rounds(
 
         # ---- 1. label any newly added structures -------------------------- #
         if build_new:
-            pending = _new_pdb_files(raw_dir, interim_dir)
+            pending = _new_pdb_files(
+                raw_dir, interim_dir,
+                max_residues=cfg.prepare.max_residues,
+                min_residues=cfg.prepare.min_residues,
+                verbose=verbose,
+            )
             if pending:
                 from .ensemble import build_all
 
-                print(f"  {len(pending)} new PDB file(s) to label: {sorted(pending)}", flush=True)
+                print(f"  {len(pending)} entry/entries to label "
+                      f"(this is the expensive step)", flush=True)
                 build_all(
                     pending, out_dir=interim_dir,
                     ensemble_cfg=cfg.ensemble, label_cfg=cfg.label,
@@ -295,7 +366,8 @@ def run_rounds(
                     overwrite=False, verbose=True,
                 )
             elif verbose:
-                print("  no new PDB files; training on what is already labelled", flush=True)
+                print("  no new labelable entries; training on what is already labelled",
+                      flush=True)
 
         # ---- 2. dataset with the frozen split ----------------------------- #
         ensembles = load_ensembles(interim_dir, verbose=False)
@@ -417,13 +489,26 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--config", default=None, help="JSON config to use as the base")
     parser.add_argument("--epochs", type=int, default=0, help="epochs per round (0 = config default)")
     parser.add_argument("--model", default=None, choices=["schnet", "mlp"])
-    parser.add_argument("--no-build-new", action="store_true",
-                        help="do not label newly added PDB files")
-    parser.add_argument("--no-warm-start", action="store_true",
-                        help="train every round from scratch (useful as an ablation)")
+    # BooleanOptionalAction gives BOTH spellings: --build-new / --no-build-new.
+    # The documentation said --build-new while the parser only accepted
+    # --no-build-new, so following the docs raised "unrecognized arguments".
+    parser.add_argument("--build-new", action=argparse.BooleanOptionalAction, default=True,
+                        help="label PDB files in --raw-dir that have no ensemble yet "
+                             "(use --no-build-new to skip)")
+    parser.add_argument("--warm-start", action=argparse.BooleanOptionalAction, default=True,
+                        help="start each round from the previous round's checkpoint "
+                             "(use --no-warm-start for the from-scratch ablation)")
+    parser.add_argument("--cache-graphs", action=argparse.BooleanOptionalAction, default=None,
+                        help="cache featurised graphs in RAM. Default: on, but automatically "
+                             "disabled when the dataset is too large to fit (see --cache-budget)")
+    parser.add_argument("--cache-budget", type=float, default=20.0, metavar="GB",
+                        help="disable the graph cache above this estimated memory footprint")
+    parser.add_argument("--max-residues", type=int, default=None,
+                        help="only label entries up to this size (default: config, 120)")
+    parser.add_argument("--min-residues", type=int, default=None,
+                        help="skip fragments shorter than this (default: config, 10)")
     parser.add_argument("--threads", type=int, default=8, help="OpenMM threads per ensemble worker")
     parser.add_argument("--workers", type=int, default=1, help="parallel ensemble workers")
-    parser.add_argument("--no-cache-graphs", action="store_true")
     parser.add_argument("--report", action="store_true",
                         help="only print the accumulated round table, then exit")
     return parser
@@ -436,8 +521,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         cfg.train.epochs = args.epochs
     if args.model:
         cfg.model.kind = args.model
-    if args.no_cache_graphs:
-        cfg.train.cache_graphs = False
+    if args.max_residues is not None:
+        cfg.prepare.max_residues = args.max_residues
+    if args.min_residues is not None:
+        cfg.prepare.min_residues = args.min_residues
+    if args.cache_graphs is not None:
+        cfg.train.cache_graphs = bool(args.cache_graphs)
+    if cfg.train.cache_graphs:
+        # Refuse to build the cache if it cannot possibly fit: featurising 100k
+        # frames takes hours and then dies on allocation.
+        keep, reason = should_cache(args.interim_dir, args.cache_budget)
+        if not keep:
+            print(f"  graph cache disabled: {reason}", flush=True)
+            cfg.train.cache_graphs = False
 
     if args.report:
         registry = IterationRegistry(args.out_dir)

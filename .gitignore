@@ -38,6 +38,11 @@ data/interim/_dbg/
 data/interim/*_clean.pdb
 data/interim/*_nmr*.pdb
 
+# Inventory report: derived from data/raw, which is itself not committed, so this
+# would be a multi-MB description of files the repository does not contain.
+# Regenerate with:  python -m pdbenergy.cli inventory --no-table
+outputs/inventory.json
+
 # Iterative training: per-round run directories accumulate (~0.7 MB each) and are
 # regenerable, so they are ignored. The *evidence* is kept: rounds.jsonl /
 # rounds.md (the round-by-round metrics), split.json (the frozen split) and the

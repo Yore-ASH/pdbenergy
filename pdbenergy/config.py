@@ -36,7 +36,15 @@ class PrepareConfig:
     #: Rebuild missing loops/residues.  Off by default: it invents coordinates.
     add_missing_residues: bool = False
     #: Optional hard cap so a stray huge entry cannot blow up the run.
+    #:
+    #: This is enforced by the entry filter that runs *before* labelling
+    #: (:func:`pdbenergy.prepare.entry_is_usable`), not by ``build_ensemble``.
+    #: Without it a 9000-residue entry would be handed to OpenMM and never finish.
     max_residues: int = 120
+    #: Skip fragments too short to have conformational energy worth learning
+    #: (single residues, dipeptides). Inventory of a real 2741-entry set found
+    #: entries with a single residue; they contribute noise, not signal.
+    min_residues: int = 10
 
 
 @dataclass

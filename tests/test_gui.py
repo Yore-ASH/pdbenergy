@@ -665,6 +665,15 @@ class TestFrontEndConsistency(unittest.TestCase):
                 f"unbalanced {opener}{closer} in the front-end script",
             )
 
+    def test_the_log_can_be_expanded_to_the_whole_window(self):
+        """The 230 px log is too short for force-field output; both GUIs offer a
+        way to blow it up.  Here it is a full-screen overlay toggled by a button
+        and by Ctrl+E, the same shortcut the desktop GUI uses."""
+        self.assertIn('id="logsize"', self.html)
+        self.assertIn("#logwrap.big", self.html)
+        self.assertIn("toggleLogBig", self.html)
+        self.assertIn("'Escape'", self.html)
+
     def test_server_binds_loopback_by_default(self):
         """There is no authentication, so the default host must stay on loopback."""
         from pdbenergy.gui import build_parser

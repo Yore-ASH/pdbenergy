@@ -1175,6 +1175,11 @@ HELP_HTML = """
 原始 PDB 2741 个约 1.66 GB。</p>
 
 <h3>四、操作与排错</h3>
+<p><b>底部两个输出栏目太窄怎么办？</b>命令行预览和实时日志中间那条界线<b>可以直接拖</b>，
+想让谁大就拖谁。按工具栏的「展开输出」（<b>Ctrl+E</b>）则让输出区整块占满窗口，再按一次
+还原——页面区里有 320 px 的最小图片区，只调分隔比例是长不大的，所以展开时是页面区整块
+让位。左侧页面列表嫌占宽度就按「隐藏侧栏」（<b>Ctrl+B</b>）。</p>
+
 <p><b>threads 和 workers 怎么配？</b>threads 是 OpenMM 内部线程数，workers 是同时处理几个
 蛋白。<code>workers × threads</code> 不要超过物理核数，否则互相抢核更慢。
 4 核 8 线程建议 <code>--workers 4 --threads 2</code>。</p>
@@ -1289,9 +1294,12 @@ class MainWindow(QMainWindow):
         top.setStretchFactor(1, 1)
 
         # ---- 底部：命令行预览 + 实时日志（都用等宽字体）------------------ #
+        # 这两块放进一个纵向分隔条：中间那条界线可以拖，谁需要更多地方就把谁拉大。
         self.command = QPlainTextEdit()
         self.command.setReadOnly(True)
-        self.command.setMaximumHeight(52)
+        # 不设 setMaximumHeight：命令行可能很长（path 一多自动换行成两三行），
+        # 硬限高会把它截掉，而且再也拉不开。初始高度交给下面的 setSizes。
+        self.command.setMinimumHeight(44)
         self.command.setFont(monospace_font(9))
         self.command.setPlaceholderText("启动任务后这里显示它实际执行的命令行（可直接复制到终端重跑）")
 
@@ -1302,6 +1310,15 @@ class MainWindow(QMainWindow):
         self.log.setPlaceholderText("实时日志：任务的标准输出会逐行出现在这里")
         self.log.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
+        #: 命令行预览 / 实时日志 之间的界线，可拖动。
+        self.output_split = QSplitter(Qt.Vertical)
+        self.output_split.addWidget(self.command)
+        self.output_split.addWidget(self.log)
+        self.output_split.setStretchFactor(0, 0)
+        self.output_split.setStretchFactor(1, 1)
+        self.output_split.setSizes([56, 420])
+        self.output_split.setChildrenCollapsible(False)   # 别一不小心拖没了
+
         self.job_label = QLabel("无任务")
         self.job_label.setStyleSheet("color:#666;")
 
@@ -1309,15 +1326,21 @@ class MainWindow(QMainWindow):
         blay = QVBoxLayout(bottom)
         blay.setContentsMargins(8, 6, 8, 8)
         blay.addWidget(self.job_label)
-        blay.addWidget(self.command)
-        blay.addWidget(self.log, 1)
+        blay.addWidget(self.output_split, 1)
 
-        splitter = QSplitter(Qt.Vertical)
-        splitter.addWidget(top)
-        splitter.addWidget(bottom)
-        splitter.setStretchFactor(0, 3)
-        splitter.setStretchFactor(1, 2)
-        self.setCentralWidget(splitter)
+        #: 页面区 / 输出区 之间的界线。拖它可以把输出区整体拉高。
+        self.splitter = QSplitter(Qt.Vertical)
+        self.splitter.addWidget(top)
+        self.splitter.addWidget(bottom)
+        self.splitter.setStretchFactor(0, 3)
+        self.splitter.setStretchFactor(1, 2)
+        self.splitter.setChildrenCollapsible(False)
+        self.setCentralWidget(self.splitter)
+        #: 页面区（左导航 + 页面栈）。「展开输出」时整块让位。
+        self.top_area = top
+        #: 「展开输出」的状态：True 时页面区让位，输出区占满窗口。
+        self.output_expanded = False
+        self._saved_split: list[int] | None = None
 
         # ---- 工具栏 / 状态栏 --------------------------------------------- #
         refresh_action = QAction("刷新", self)
@@ -1328,11 +1351,31 @@ class MainWindow(QMainWindow):
         self.cancel_action.triggered.connect(self.cancel_job)
         open_action = QAction("打开输出目录", self)
         open_action.triggered.connect(self.open_outputs)
+
+        #: 输出区太挤时的两个开关。默认比例（页面 3 : 输出 2）在 860 px 高的窗口
+        #: 上只留给日志两百多像素，力场日志一行一个数，确实不够看。
+        self.expand_action = QAction("展开输出", self)
+        self.expand_action.setCheckable(True)
+        self.expand_action.setShortcut(QKeySequence("Ctrl+E"))
+        self.expand_action.setToolTip(
+            "让底部的两个输出栏目（命令行预览 + 实时日志）占满窗口，再按一次还原"
+            "（Ctrl+E）。中间的界线也可以直接拖动。"
+        )
+        self.expand_action.triggered.connect(self.toggle_output_expanded)
+
+        self.sidebar_action = QAction("隐藏侧栏", self)
+        self.sidebar_action.setShortcut(QKeySequence("Ctrl+B"))
+        self.sidebar_action.setToolTip("收起左侧页面列表，让内容占满宽度（Ctrl+B）")
+        self.sidebar_action.triggered.connect(self.toggle_sidebar)
+
         toolbar = self.addToolBar("主工具栏")
         toolbar.setMovable(False)
         toolbar.addAction(refresh_action)
         toolbar.addAction(self.cancel_action)
         toolbar.addAction(open_action)
+        toolbar.addSeparator()
+        toolbar.addAction(self.expand_action)
+        toolbar.addAction(self.sidebar_action)
 
         self.setStatusBar(QStatusBar())
         self.status_label = QLabel()
@@ -1465,6 +1508,43 @@ class MainWindow(QMainWindow):
                     page.on_job_finished(status)
                 except Exception as exc:
                     self.log_message(f"[界面] {page.title} 收尾失败：{exc}")
+
+    def toggle_output_expanded(self) -> None:
+        """把底部输出区放大到占满窗口，再按一次还原。
+
+        底部的两个栏目（命令行预览 + 实时日志）按默认 3:2 的比例只分到窗口高度的
+        四成，日志里力场的数字列常常要横向滚动才看得全。
+
+        这里不是简单改分隔条比例：页面区里有 320 px 的最小图片区，比例再极端也会被
+        最小高度顶回来，输出区根本长不大。所以展开时把页面区**整块隐藏**，空间自然
+        全归输出区；还原时先恢复可见、再把之前记下的比例放回去。
+
+        想微调（页面和输出各占一半之类）就直接拖那两条界线，和这个开关互不干扰。
+        """
+        if not self.output_expanded:
+            self._saved_split = self.splitter.sizes()
+            self.top_area.setVisible(False)
+        else:
+            self.top_area.setVisible(True)
+            if self._saved_split:
+                self.splitter.setSizes(self._saved_split)
+        self.output_expanded = not self.output_expanded
+        # setChecked 只发 toggled、不发 triggered，所以不会绕回来递归调用。
+        self.expand_action.setChecked(self.output_expanded)
+        self.expand_action.setText("收起输出" if self.output_expanded else "展开输出")
+        self.statusBar().showMessage(
+            "输出区已占满窗口（Ctrl+E 还原）" if self.output_expanded
+            else "输出区已还原", 3000
+        )
+
+    def toggle_sidebar(self) -> None:
+        """收起 / 展开左侧页面列表，把宽度让给内容区。"""
+        hiding = not self.nav.isHidden()
+        self.nav.setVisible(not hiding)
+        self.sidebar_action.setText("显示侧栏" if hiding else "隐藏侧栏")
+        self.statusBar().showMessage(
+            "侧栏已隐藏（Ctrl+B 恢复）" if hiding else "侧栏已显示", 3000
+        )
 
     def cancel_job(self) -> None:
         if self.active_job_id:

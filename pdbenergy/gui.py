@@ -926,6 +926,10 @@ tbody tr:hover{background:var(--panel2)}
   border-radius:7px;padding:10px;height:230px;overflow:auto;white-space:pre-wrap;
   word-break:break-word}
 #logwrap{padding:0 22px 20px}
+/* 展开日志：把这一块升成全屏浮层。230px 的默认高度看力场输出太窄。 */
+#logwrap.big{position:fixed;inset:0;z-index:60;background:var(--bg);
+  padding:14px 18px 18px;display:flex;flex-direction:column;gap:10px}
+#logwrap.big #log{flex:1;height:auto;min-height:0}
 .badge{display:inline-block;padding:2px 7px;border-radius:5px;font-size:12px;
   font-family:var(--font)}
 .b-ok{background:#12351c;color:var(--ok)} .b-bad{background:#3a1a1a;color:var(--bad)}
@@ -1403,7 +1407,11 @@ details .body th{position:static;background:transparent}
 </div>
 </main>
 <div id="logwrap">
-  <h3 style="margin-top:0">实时日志 <span id="log-label" class="badge b-idle">无任务</span></h3>
+  <div class="row" style="justify-content:space-between">
+    <h3 style="margin:0">实时日志 <span id="log-label" class="badge b-idle">无任务</span></h3>
+    <button class="act ghost" id="logsize"
+      data-tip="把日志铺满整个窗口，长输出（力场数字列）就不用横向滚了。再按一次或按 Esc 还原。">展开日志</button>
+  </div>
   <div id="log">（尚未运行任何任务）</div>
 </div>
 
@@ -1715,6 +1723,21 @@ $('btn-cancel').onclick = async () => {
   await api(`/api/job/${ACTIVE}/cancel`, {method:'POST'});
 };
 function log(msg) { $('log').textContent += '\n' + msg; $('log').scrollTop = $('log').scrollHeight; }
+
+// 展开 / 收起日志浮层。Ctrl+E 与桌面版一致，Esc 关掉。
+function toggleLogBig(force) {
+  const on = $('logwrap').classList.toggle('big', force);
+  $('logsize').textContent = on ? '收起日志' : '展开日志';
+  if (on) $('log').scrollTop = $('log').scrollHeight;
+  return on;
+}
+$('logsize').onclick = () => toggleLogBig();
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') toggleLogBig(false);
+  if ((e.ctrlKey || e.metaKey) && (e.key || '').toLowerCase() === 'e') {
+    e.preventDefault(); toggleLogBig();
+  }
+});
 
 refresh();
 setInterval(refresh, 15000);

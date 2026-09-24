@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 try:
-    from PySide6.QtGui import QFontInfo
+    from PySide6.QtGui import QFontInfo, QKeySequence
     from PySide6.QtWidgets import QApplication, QCheckBox, QLabel, QPushButton
     PYSIDE = True
 except ImportError:                                          # pragma: no cover
@@ -474,6 +474,105 @@ class TestStartupSelfCheck(unittest.TestCase):
                 self.assertIn("-c", text)
             finally:
                 window.close()
+
+
+@requires_qt
+class TestOutputPanels(unittest.TestCase):
+    """The bottom half holds two output panes: the command preview and the log.
+
+    Both used to be cramped: the command preview was capped at 52 px (so a long
+    command was clipped and could never be enlarged) and the log got whatever
+    the 3:2 split left it.  These tests pin down that they can now be resized
+    and that the expand toggle really gives the log the window.
+    """
+
+    app = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = QApplication.instance() or QApplication(sys.argv[:1])
+
+    def setUp(self):
+        import tempfile
+
+        from pdbenergy.gui_qt import AppContext, MainWindow
+
+        self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        dirs = {k: os.path.join(self.tmp.name, k)
+                for k in ("raw", "interim", "processed", "outputs")}
+        for path in dirs.values():
+            os.makedirs(path, exist_ok=True)
+        self.window = MainWindow(AppContext(cfg=Config(), dirs=dirs,
+                                           manager=JobManager(self.tmp.name)))
+        self.window.resize(1280, 860)
+        self.window.show()
+        self.app.processEvents()
+
+    def tearDown(self):
+        self.window.close()
+        self.tmp.cleanup()
+
+    def test_the_two_panes_share_a_draggable_splitter(self):
+        split = self.window.output_split
+        self.assertEqual(split.orientation().name, "Vertical")
+        self.assertEqual(split.count(), 2)
+        self.assertIs(split.widget(0), self.window.command)
+        self.assertIs(split.widget(1), self.window.log)
+        self.assertFalse(split.childrenCollapsible(),
+                         "别让用户一不小心把某一块拖没了")
+
+    def test_the_command_preview_is_no_longer_height_capped(self):
+        """The old setMaximumHeight(52) clipped long command lines for good."""
+        self.assertGreater(self.window.command.maximumHeight(), 1000)
+
+    def test_dragging_the_divider_really_resizes_the_panes(self):
+        before = self.window.command.height()
+        self.window.output_split.setSizes([300, 100])
+        self.app.processEvents()
+        self.assertGreater(self.window.command.height(), before)
+        self.assertGreater(self.window.command.height(),
+                           self.window.log.height())
+
+    def test_expand_gives_the_output_area_the_window(self):
+        log_before = self.window.log.height()
+        self.window.expand_action.trigger()
+        self.app.processEvents()
+        self.assertTrue(self.window.output_expanded)
+        self.assertTrue(self.window.top_area.isHidden(),
+                        "页面区必须让位，否则最小高度会把输出区顶回来")
+        self.assertTrue(self.window.expand_action.isChecked())
+        self.assertEqual(self.window.expand_action.text(), "收起输出")
+        self.assertGreater(self.window.log.height(), log_before,
+                           "展开后日志应该拿到更多高度")
+
+    def test_collapse_restores_the_pages_and_the_previous_split(self):
+        sizes_before = self.window.splitter.sizes()
+        self.window.expand_action.trigger()
+        self.app.processEvents()
+        self.window.expand_action.trigger()
+        self.app.processEvents()
+        self.assertFalse(self.window.output_expanded)
+        self.assertFalse(self.window.top_area.isHidden())
+        self.assertEqual(self.window.expand_action.text(), "展开输出")
+        self.assertFalse(self.window.expand_action.isChecked())
+        # Same ratio as before, allowing for a pixel of layout rounding.
+        for got, want in zip(self.window.splitter.sizes(), sizes_before):
+            self.assertAlmostEqual(got, want, delta=2)
+
+    def test_the_expand_shortcut_is_ctrl_e(self):
+        self.assertEqual(self.window.expand_action.shortcut(),
+                         QKeySequence("Ctrl+E"))
+
+    def test_sidebar_toggle_hands_its_width_to_the_content(self):
+        self.assertFalse(self.window.nav.isHidden())
+        self.window.sidebar_action.trigger()
+        self.app.processEvents()
+        self.assertTrue(self.window.nav.isHidden())
+        self.assertEqual(self.window.sidebar_action.text(), "显示侧栏")
+        self.window.sidebar_action.trigger()
+        self.app.processEvents()
+        self.assertFalse(self.window.nav.isHidden())
+        self.assertEqual(self.window.sidebar_action.text(), "隐藏侧栏")
 
 
 if __name__ == "__main__":

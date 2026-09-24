@@ -10,7 +10,8 @@
     "add_hydrogens": true,
     "ph": 7.0,
     "add_missing_residues": false,
-    "max_residues": 120
+    "max_residues": 120,
+    "min_residues": 10
   },
   "ensemble": {
     "seed": 20240517,
@@ -65,7 +66,7 @@
     "use_bond_feature": true
   },
   "model": {
-    "kind": "schnet",
+    "kind": "mlp",
     "hidden_dim": 64,
     "n_interactions": 3,
     "cutoff": 4.0,
@@ -75,7 +76,7 @@
   },
   "train": {
     "seed": 1234,
-    "epochs": 20,
+    "epochs": 25,
     "batch_size": 16,
     "learning_rate": 0.0005,
     "weight_decay": 1e-05,

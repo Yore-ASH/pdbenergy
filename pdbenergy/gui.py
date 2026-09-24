@@ -155,19 +155,97 @@ class JobManager:
         #: wrong.  Falling back to the project root avoids both.
         self.cwd = cwd if cwd and os.path.isdir(cwd) else self.project_root
         self.python = python or sys.executable
+        #: Which PYTHON* variables were stripped from the children, filled in by
+        #: :meth:`child_env` so the log can say what was neutralised.
+        self.dropped_env_keys: list[str] = []
         self._jobs: dict[str, Job] = {}
         self._order: list[str] = []
         self._lock = threading.Lock()
 
+    #: Variables that change how a child interpreter starts up.  Every one of
+    #: them is removed from the child's environment: an inherited value makes
+    #: ``.venv\\Scripts\\python.exe`` behave like a different installation, and
+    #: the failure looks like a missing package even though every path the GUI
+    #: prints is correct.  ``PYTHONPATH`` is not in this list - we set it, and we
+    #: keep any inherited entries behind the project root.
+    POISONED_ENV_KEYS = ("PYTHONHOME", "PYTHONSAFEPATH", "PYTHONSTARTUP",
+                         "PYTHONEXECUTABLE", "__PYVENV_LAUNCHER__",
+                         "PYTHONNOUSERSITE", "PYTHONUSERBASE", "PYTHONPLATLIBDIR")
+
+    #: Everything worth printing when a job fails.
+    PYTHON_ENV_KEYS = ("PYTHONPATH", "PYTHONHOME", "PYTHONSAFEPATH",
+                       "PYTHONSTARTUP", "PYTHONNOUSERSITE", "PYTHONEXECUTABLE",
+                       "__PYVENV_LAUNCHER__", "VIRTUAL_ENV", "PYTHONWARNINGS")
+
     def child_env(self) -> dict[str, str]:
-        """The environment every child gets, with the project root on the path."""
+        """The environment every child gets: project root first, no poison."""
+        self.dropped_env_keys = sorted(k for k in self.POISONED_ENV_KEYS
+                                       if os.environ.get(k))
         env = dict(os.environ)
+        for key in self.dropped_env_keys:
+            env.pop(key, None)
         env["PYTHONIOENCODING"] = "utf-8"
         env["PYTHONUNBUFFERED"] = "1"
         existing = env.get("PYTHONPATH", "")
         parts = [self.project_root] + ([existing] if existing else [])
         env["PYTHONPATH"] = os.pathsep.join(parts)
         return env
+
+    def python_env_report(self) -> list[str]:
+        """The Python-affecting variables, as the GUI process sees them."""
+        lines = [f"[诊断]   {key}={os.environ[key]}"
+                 for key in self.PYTHON_ENV_KEYS if os.environ.get(key)]
+        if getattr(self, "dropped_env_keys", None):
+            lines.append("[诊断]   已从子进程环境中移除："
+                         + ", ".join(self.dropped_env_keys))
+        return lines or ["[诊断]   （没有设置任何 PYTHON* 变量）"]
+
+    def diagnose_child(self, module: str) -> list[str]:
+        """Ask a real child what *it* sees.  Only runs after a failure.
+
+        Reasoning from the outside had already proved useless: the interpreter
+        path, the project root and the working directory were all correct, yet
+        the import still failed.  This prints the child's own ``sys.path``, what
+        it thinks about the package, and the real traceback - so the next
+        failure names its own cause instead of repeating ``No module named``.
+        """
+        probe = (
+            "import importlib.util as u, os, sys, traceback\n"
+            "print('executable :', sys.executable)\n"
+            "print('version    :', sys.version.split()[0])\n"
+            "print('cwd        :', os.getcwd())\n"
+            "print('prefix     :', sys.prefix)\n"
+            "print('base_prefix:', sys.base_prefix)\n"
+            "print('safe_path  :', sys.flags.safe_path)\n"
+            "print('sys.path   :')\n"
+            "for p in sys.path:\n"
+            "    print('   ', repr(p), '->', 'dir' if p and os.path.isdir(p) else repr(p))\n"
+            "for name in ('pdbenergy', 'pdbenergy.cli'):\n"
+            "    try:\n"
+            "        print('find_spec  :', name, '->', u.find_spec(name))\n"
+            "    except Exception as exc:\n"
+            "        print('find_spec  :', name, 'raised', type(exc).__name__, exc)\n"
+            "print('cli.py     :', os.path.isfile(os.path.join(os.getcwd(),"
+            " 'pdbenergy', 'cli.py')))\n"
+            "try:\n"
+            "    import pdbenergy.cli\n"
+            "    print('import     : ok ->', pdbenergy.cli.__file__)\n"
+            "except BaseException:\n"
+            "    print('import     : FAILED')\n"
+            "    traceback.print_exc()\n"
+        )
+        try:
+            proc = subprocess.run(
+                [self.python, "-c", probe], cwd=self.cwd, env=self.child_env(),
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, encoding="utf-8", errors="replace", timeout=180,
+            )
+        except Exception as exc:                              # pragma: no cover
+            return [f"[诊断] 探针没能运行：{type(exc).__name__}: {exc}"]
+        lines = ["[诊断] ---- 子进程自述（由界面代跑同一条路径）----"]
+        lines += [f"[诊断] {ln}" for ln in (proc.stdout or "").splitlines()]
+        lines.append(f"[诊断] 探针退出码 {proc.returncode}")
+        return lines
 
     def check_import(self, module: str = "pdbenergy.cli") -> str | None:
         """Import ``module`` in a throwaway child; return ``None`` on success.
@@ -193,17 +271,27 @@ class JobManager:
 
     def import_hint(self, module: str, reason: str) -> str:
         """A diagnosis to print instead of a bare ``No module named ...``."""
-        return (
-            f"[界面] 子进程无法导入 {module}：{reason}\n"
-            f"[界面]   解释器  : {self.python}\n"
-            f"[界面]   项目根目录: {self.project_root} "
-            f"（存在：{os.path.isdir(self.project_root)}）\n"
-            f"[界面]   工作目录  : {self.cwd}\n"
-            "[界面] 最常见的原因：界面是在项目改名/移动之后、或虚拟环境重装之前启动的，"
-            "进程里仍然记着旧路径。请关闭界面并从当前项目目录重新启动；"
-            "若仍失败，先在终端运行自检：\n"
-            f'[界面]   {self.python} -c "import pdbenergy.cli; print(pdbenergy.cli.__file__)"'
-        )
+        pkg = os.path.join(self.project_root, "pdbenergy")
+        cli = os.path.join(pkg, "cli.py")
+        lines = [
+            f"[界面] 子进程无法导入 {module}：{reason}",
+            f"[界面]   解释器    : {self.python}"
+            f"（存在：{os.path.isfile(self.python)}）",
+            f"[界面]   项目根目录: {self.project_root}"
+            f"（存在：{os.path.isdir(self.project_root)}）",
+            f"[界面]   包目录    : {pkg}（存在：{os.path.isdir(pkg)}）",
+            f"[界面]   cli.py    : {cli}（存在：{os.path.isfile(cli)}）",
+            f"[界面]   工作目录  : {self.cwd}",
+            "[界面] 传给子进程的 Python 环境变量：",
+            *self.python_env_report(),
+            "[界面] 请在终端手跑这条，它和界面走的是同一个解释器：",
+            f'[界面]   {self.python} -c "import pdbenergy.cli; print(pdbenergy.cli.__file__)"',
+            "[界面] 若上面成功而界面仍失败：多半是界面进程继承了坏掉的 PYTHONHOME/PYTHONPATH，"
+            "关掉界面、在干净终端里重新启动即可。",
+            f"[界面] 若包目录或 cli.py 显示不存在，说明界面用的是另一个副本，"
+            f"请在 {self.project_root} 下启动。",
+        ]
+        return "\n".join(lines)
 
     # -- launching ---------------------------------------------------------- #
     def start(self, label: str, args: Sequence[str], module: str = "pdbenergy.cli") -> Job:
@@ -254,14 +342,24 @@ class JobManager:
             job.finished = time.time()
             if job.status != "cancelled":
                 reason = self._import_failure(job)
+                if reason:
+                    # The whole log, not just the offending line: a bare
+                    # "No module named X" is unactionable, and the lines above
+                    # it often carry the real story.
+                    extra = [f"[界面] 子进程退出码 {code}；完整输出见上。",
+                             self.import_hint(job.module, reason)]
+                    extra += self.diagnose_child(job.module)
+                    job.lines.extend(extra)
+                    job.produced += len(extra)
+                # Status is written *last*.  Readers stop polling as soon as they
+                # see a terminal status, so setting it before appending would
+                # make them miss the diagnosis entirely.
+                #
                 # A child that never managed to import the module can still exit
                 # 0 in some setups, so a clean exit code alone is not enough to
                 # call the job successful - that is what let a run that produced
                 # nothing at all report "任务完成".
                 job.status = "failed" if (code != 0 or reason) else "done"
-                if reason:
-                    job.lines.append(self.import_hint(job.module, reason))
-                    job.produced += 1
             try:                                   # release the pipe promptly
                 if job.process.stdout is not None:
                     job.process.stdout.close()

@@ -26,6 +26,7 @@ import unittest
 import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -137,6 +138,45 @@ class TestJobManager(unittest.TestCase):
         manager = JobManager(self.dir)
         parts = manager.child_env()["PYTHONPATH"].split(os.pathsep)
         self.assertEqual(parts[0], manager.project_root)
+
+    def test_child_env_strips_interpreter_poison(self):
+        """An inherited PYTHONHOME makes the venv interpreter use another
+        installation's stdlib.  Every path the GUI prints still looks correct,
+        which is what made this so hard to see from a failing job log."""
+        manager = JobManager(self.dir)
+        with mock.patch.dict(os.environ, {"PYTHONHOME": r"C:\Python313",
+                                          "PYTHONSAFEPATH": "1",
+                                          "PYTHONSTARTUP": "x.py"}, clear=False):
+            env = manager.child_env()
+        self.assertNotIn("PYTHONHOME", env)
+        self.assertNotIn("PYTHONSAFEPATH", env)
+        self.assertNotIn("PYTHONSTARTUP", env)
+        self.assertEqual(sorted(manager.dropped_env_keys),
+                         ["PYTHONHOME", "PYTHONSAFEPATH", "PYTHONSTARTUP"])
+        # ...and the log says so, instead of dropping them silently.
+        report = "\n".join(manager.python_env_report())
+        self.assertIn("PYTHONHOME", report)
+
+    def test_diagnose_child_reports_the_working_sys_path(self):
+        """The probe must actually run and describe a healthy child."""
+        manager = JobManager(self.dir)
+        text = "\n".join(manager.diagnose_child("pdbenergy.cli"))
+        self.assertIn("executable", text)
+        self.assertIn("sys.path", text)
+        self.assertIn("find_spec", text)
+        self.assertIn("import     : ok", text)
+        self.assertIn(manager.project_root, text)
+
+    def test_child_env_is_clean_even_when_the_gui_is_poisoned(self):
+        """The regression, end to end: poison the manager, not the process."""
+        manager = JobManager(self.dir)
+        manager.project_root = project_root()
+        with mock.patch.dict(os.environ, {"PYTHONHOME": r"C:\Python313"}, clear=False):
+            job = manager.start("help", ["--help"])
+            done = self._wait_for(manager, job.id)
+        self.assertEqual(done.status, "done",
+                         "a poisoned parent environment must not reach the child")
+        manager.shutdown()
 
     @staticmethod
     def _wait_for(manager, job_id, timeout=60.0):

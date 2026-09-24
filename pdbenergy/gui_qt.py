@@ -1356,15 +1356,21 @@ class MainWindow(QMainWindow):
         """
         mgr = self.ctx.manager
         root_ok = os.path.isdir(mgr.project_root)
+        cli = os.path.join(mgr.project_root, "pdbenergy", "cli.py")
         self.log_message(
             f"[自检] 解释器     {mgr.python}\n"
             f"[自检] 项目根目录 {mgr.project_root}（存在：{root_ok}）\n"
+            f"[自检] cli.py     {cli}（存在：{os.path.isfile(cli)}）\n"
             f"[自检] 工作目录   {mgr.cwd}\n"
             f"[自检] 数据目录   raw={self.ctx.dirs['raw']}"
         )
+        for line in mgr.python_env_report():
+            self.log_message(line)
         problem = None
         if not root_ok:
             problem = f"项目根目录不存在：{mgr.project_root}"
+        elif not os.path.isfile(cli):
+            problem = f"cli.py 不在预期的位置：{cli}"
         else:
             try:
                 if importlib.util.find_spec("pdbenergy.cli") is None:

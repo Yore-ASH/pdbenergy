@@ -74,6 +74,9 @@ class Job:
     label: str
     argv: list[str]
     cwd: str
+    #: The module (or script path) the child was asked to run; kept so a failed
+    #: launch can name what could not be imported.
+    module: str = ""
     status: str = "running"            # running | done | failed | cancelled
     returncode: int | None = None
     started: float = field(default_factory=time.time)
@@ -104,12 +107,41 @@ class Job:
         }
 
 
+def project_root() -> str:
+    """The directory that contains both ``pdbenergy/`` and ``scripts/``.
+
+    Derived from this file's location, never from ``os.getcwd()``.  The GUI is
+    routinely started from a desktop shortcut, an IDE or another shell, and a
+    cwd that is not the project root silently sends every relative path
+    (``data/raw``, ``data/interim``, ``outputs``) somewhere else - jobs then run
+    "successfully" against an empty directory.
+    """
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def resolve_dir(path: str, root: str | None = None) -> str:
+    """Make a directory argument absolute, resisting a foreign launch cwd.
+
+    The defaults are relative (``data/raw``) and must mean "next to the
+    project", not "next to whatever directory the shortcut happened to start
+    us in".
+    """
+    if os.path.isabs(path):
+        return os.path.normpath(path)
+    return os.path.normpath(os.path.join(root or project_root(), path))
+
+
+#: What a Python child prints when it cannot find the module it was told to run.
+#: ``python -m pkg.mod`` reports the *dotted* name even when the missing part is
+#: the parent package, which is why a broken environment surfaces as a bare
+#: ``No module named pdbenergy.cli`` with nothing to act on.
+IMPORT_FAILURE_MARKERS = ("No module named ", "ModuleNotFoundError")
+
+
 class JobManager:
     """Launches CLI subprocesses and streams their output."""
 
-    def __init__(self, cwd: str, python: str | None = None):
-        self.cwd = cwd
-        self.python = python or sys.executable
+    def __init__(self, cwd: str | None = None, python: str | None = None):
         #: The directory that contains both ``pdbenergy/`` and ``scripts/``.  It
         #: is put on the children's PYTHONPATH so jobs work even when the
         #: package is not installed, or when the editable install has gone stale
@@ -117,10 +149,61 @@ class JobManager:
         #: generated path hook keeps pointing at the old location, and
         #: ``python -m pdbenergy.cli`` then fails with ModuleNotFoundError only
         #: from directories other than the project root).
-        self.project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.project_root = project_root()
+        #: A cwd that does not exist makes ``Popen`` fail outright; a cwd that
+        #: exists but is not the project root makes every relative data path
+        #: wrong.  Falling back to the project root avoids both.
+        self.cwd = cwd if cwd and os.path.isdir(cwd) else self.project_root
+        self.python = python or sys.executable
         self._jobs: dict[str, Job] = {}
         self._order: list[str] = []
         self._lock = threading.Lock()
+
+    def child_env(self) -> dict[str, str]:
+        """The environment every child gets, with the project root on the path."""
+        env = dict(os.environ)
+        env["PYTHONIOENCODING"] = "utf-8"
+        env["PYTHONUNBUFFERED"] = "1"
+        existing = env.get("PYTHONPATH", "")
+        parts = [self.project_root] + ([existing] if existing else [])
+        env["PYTHONPATH"] = os.pathsep.join(parts)
+        return env
+
+    def check_import(self, module: str = "pdbenergy.cli") -> str | None:
+        """Import ``module`` in a throwaway child; return ``None`` on success.
+
+        Uses the same interpreter, cwd and environment the real jobs use, so a
+        failure here is a failure every job would hit - which is exactly the kind
+        of thing worth telling the user *before* they wait an hour for a run.
+        """
+        try:
+            proc = subprocess.run(
+                [self.python, "-c",
+                 f"import importlib; importlib.import_module({module!r})"],
+                cwd=self.cwd, env=self.child_env(),
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, encoding="utf-8", errors="replace", timeout=180,
+            )
+        except Exception as exc:                              # pragma: no cover
+            return f"{type(exc).__name__}: {exc}"
+        if proc.returncode == 0:
+            return None
+        tail = [ln for ln in (proc.stdout or "").splitlines() if ln.strip()]
+        return tail[-1] if tail else f"退出码 {proc.returncode}"
+
+    def import_hint(self, module: str, reason: str) -> str:
+        """A diagnosis to print instead of a bare ``No module named ...``."""
+        return (
+            f"[界面] 子进程无法导入 {module}：{reason}\n"
+            f"[界面]   解释器  : {self.python}\n"
+            f"[界面]   项目根目录: {self.project_root} "
+            f"（存在：{os.path.isdir(self.project_root)}）\n"
+            f"[界面]   工作目录  : {self.cwd}\n"
+            "[界面] 最常见的原因：界面是在项目改名/移动之后、或虚拟环境重装之前启动的，"
+            "进程里仍然记着旧路径。请关闭界面并从当前项目目录重新启动；"
+            "若仍失败，先在终端运行自检：\n"
+            f'[界面]   {self.python} -c "import pdbenergy.cli; print(pdbenergy.cli.__file__)"'
+        )
 
     # -- launching ---------------------------------------------------------- #
     def start(self, label: str, args: Sequence[str], module: str = "pdbenergy.cli") -> Job:
@@ -139,16 +222,12 @@ class JobManager:
             self._jobs[job.id] = job
             self._order.append(job.id)
 
-        env = dict(os.environ)
-        env["PYTHONIOENCODING"] = "utf-8"
-        env["PYTHONUNBUFFERED"] = "1"
-        existing = env.get("PYTHONPATH", "")
-        parts = [self.project_root] + ([existing] if existing else [])
-        env["PYTHONPATH"] = os.pathsep.join(parts)
+        env = self.child_env()
         # Merge stderr into stdout so the log reads in causal order.
         creationflags = 0
         if os.name == "nt":
             creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        job.module = module
         job.process = subprocess.Popen(
             argv, cwd=self.cwd, env=env,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -174,12 +253,28 @@ class JobManager:
             job.returncode = code
             job.finished = time.time()
             if job.status != "cancelled":
-                job.status = "done" if code == 0 else "failed"
+                reason = self._import_failure(job)
+                # A child that never managed to import the module can still exit
+                # 0 in some setups, so a clean exit code alone is not enough to
+                # call the job successful - that is what let a run that produced
+                # nothing at all report "任务完成".
+                job.status = "failed" if (code != 0 or reason) else "done"
+                if reason:
+                    job.lines.append(self.import_hint(job.module, reason))
+                    job.produced += 1
             try:                                   # release the pipe promptly
                 if job.process.stdout is not None:
                     job.process.stdout.close()
             except Exception:
                 pass
+
+    @staticmethod
+    def _import_failure(job: Job) -> str | None:
+        """The child's own line proving it could not import what we asked for."""
+        for line in job.lines:
+            if any(marker in line for marker in IMPORT_FAILURE_MARKERS):
+                return line.strip()
+        return None
 
     # -- inspection / control ----------------------------------------------- #
     def get(self, job_id: str) -> Job | None:
@@ -1519,13 +1614,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     cfg = Config.load(args.config) if args.config else Config()
 
     handler = type("BoundHandler", (Handler,), {
-        "manager": JobManager(os.getcwd()),
+        "manager": JobManager(),
         "cfg": cfg,
         "dirs": {
-            "raw": args.raw_dir,
-            "interim": args.interim_dir,
-            "processed": args.processed_dir,
-            "outputs": args.outputs_dir,
+            "raw": resolve_dir(args.raw_dir),
+            "interim": resolve_dir(args.interim_dir),
+            "processed": resolve_dir(args.processed_dir),
+            "outputs": resolve_dir(args.outputs_dir),
         },
     })
 

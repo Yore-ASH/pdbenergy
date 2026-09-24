@@ -44,6 +44,7 @@ if __package__ in (None, ""):                                    # pragma: no co
 
     _sys.exit(_main())
 
+import importlib.util
 import os
 import sys
 from dataclasses import dataclass
@@ -105,6 +106,7 @@ from .gui import (                       # 与浏览器版共享的只读自省
     list_runs,
     predict_checkpoints,
     project_state,
+    resolve_dir,
 )
 
 # --------------------------------------------------------------------------- #
@@ -1342,6 +1344,39 @@ class MainWindow(QMainWindow):
         self.timer.start()
 
         self.refresh_state()
+        self.check_environment()
+
+    # -- 启动自检 ----------------------------------------------------------- #
+    def check_environment(self) -> None:
+        """把关键路径写进日志，并就地做一次导入自检。
+
+        就地检查（``importlib.util.find_spec``）而不是起一个子进程：启动瞬间不该
+        为一次 ``--help`` 级的开销卡顿，也避免自检进程占住工作目录。真正的子进程
+        级诊断留给任务失败时——``JobManager`` 会在日志里给出完整提示。
+        """
+        mgr = self.ctx.manager
+        root_ok = os.path.isdir(mgr.project_root)
+        self.log_message(
+            f"[自检] 解释器     {mgr.python}\n"
+            f"[自检] 项目根目录 {mgr.project_root}（存在：{root_ok}）\n"
+            f"[自检] 工作目录   {mgr.cwd}\n"
+            f"[自检] 数据目录   raw={self.ctx.dirs['raw']}"
+        )
+        problem = None
+        if not root_ok:
+            problem = f"项目根目录不存在：{mgr.project_root}"
+        else:
+            try:
+                if importlib.util.find_spec("pdbenergy.cli") is None:
+                    problem = "找不到模块 pdbenergy.cli"
+            except (ImportError, ValueError) as exc:
+                problem = f"{type(exc).__name__}: {exc}"
+        if problem is None:
+            self.log_message("[自检] ✓ 能找到 pdbenergy.cli，环境正常。")
+            return
+        self.log_message(f"[自检] ✗ {problem} —— 现在启动任务很可能直接失败。")
+        for line in mgr.import_hint("pdbenergy.cli", problem).splitlines():
+            self.log_message(line)
 
     # -- 状态 --------------------------------------------------------------- #
     def refresh_state(self) -> None:
@@ -1465,9 +1500,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     cfg = Config.load(args.config) if args.config else Config()
     ctx = AppContext(
         cfg=cfg,
-        dirs={"raw": args.raw_dir, "interim": args.interim_dir,
-              "processed": args.processed_dir, "outputs": args.outputs_dir},
-        manager=JobManager(os.getcwd()),
+        dirs={"raw": resolve_dir(args.raw_dir), "interim": resolve_dir(args.interim_dir),
+              "processed": resolve_dir(args.processed_dir),
+              "outputs": resolve_dir(args.outputs_dir)},
+        # No argument: JobManager falls back to the project root, so a shortcut
+        # started from anywhere still finds data/ and outputs/.
+        manager=JobManager(),
     )
     window = MainWindow(ctx)
     window.show()

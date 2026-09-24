@@ -248,7 +248,11 @@ class TestStateBinding(unittest.TestCase):
 
         from pdbenergy.gui_qt import AppContext, MainWindow
 
-        with tempfile.TemporaryDirectory() as root:
+        # ignore_cleanup_errors: the window's JobManager uses this directory as
+        # the child's cwd, so on Windows the removal can race a closing process
+        # handle and fail with WinError 32.  The assertions have already run by
+        # then; failing a whole suite over a leftover %TEMP% directory is noise.
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as root:
             dirs = {k: os.path.join(root, k)
                     for k in ("raw", "interim", "processed", "outputs")}
             for path in dirs.values():
@@ -276,7 +280,7 @@ class TestStateBinding(unittest.TestCase):
 
         from pdbenergy.gui_qt import AppContext, MainWindow
 
-        with tempfile.TemporaryDirectory() as root:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as root:
             dirs = {k: os.path.join(root, k)
                     for k in ("raw", "interim", "processed", "outputs")}
             for path in dirs.values():
@@ -344,7 +348,7 @@ class TestJobLifecycle(unittest.TestCase):
     def test_start_and_poll_a_job_to_completion(self):
         import tempfile
 
-        with tempfile.TemporaryDirectory() as root:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as root:
             window = self._window(root)
             try:
                 script = os.path.join(root, "quick.py")
@@ -373,7 +377,7 @@ class TestJobLifecycle(unittest.TestCase):
         labelling processes holding every core for hours."""
         import tempfile
 
-        with tempfile.TemporaryDirectory() as root:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as root:
             window = self._window(root)
             sleeper = os.path.join(root, "sleeper.py")
             with open(sleeper, "w", encoding="utf-8") as fh:
@@ -389,7 +393,7 @@ class TestJobLifecycle(unittest.TestCase):
     def test_cancel_button_stops_the_job(self):
         import tempfile
 
-        with tempfile.TemporaryDirectory() as root:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as root:
             window = self._window(root)
             try:
                 sleeper = os.path.join(root, "sleeper.py")

@@ -37,11 +37,18 @@ from pdbenergy.gui import (                                      # noqa: E402
     list_pdb_files,
     list_runs,
     predict_checkpoints,
+    project_root,
     project_state,
+    resolve_dir,
 )
 
 SLEEPER = "import time, sys\nprint('started', flush=True)\nfor i in range(120):\n" \
           "    print('tick', i, flush=True)\n    time.sleep(0.25)\n"
+
+#: What ``python -m pdbenergy.cli`` prints when the package cannot be found.
+#: The message names the *dotted* module even when the parent is what is
+#: missing, which is why it used to be so hard to act on.
+MISSING_MODULE_MESSAGE = "No module named pdbenergy.cli"
 
 
 class TestJobManager(unittest.TestCase):
@@ -83,6 +90,63 @@ class TestJobManager(unittest.TestCase):
         done = self._wait(job.id)
         self.assertEqual(done.status, "failed")
         self.assertNotEqual(done.returncode, 0)
+
+    def test_missing_module_is_failed_even_when_the_child_exits_zero(self):
+        """A child that could not import anything must never look successful.
+
+        This pins down the bug that produced a "✓ 任务完成" for a run that
+        labelled nothing: the child printed ``No module named pdbenergy.cli``
+        and still exited 0, so a return-code-only check called it a success.
+        """
+        script = os.path.join(self.dir, "liar.py")
+        with open(script, "w", encoding="utf-8") as fh:
+            fh.write(f"print({MISSING_MODULE_MESSAGE!r})\n")
+        job = self.manager.start("liar", [], module=script)
+        done = self._wait(job.id)
+        self.assertEqual(done.returncode, 0, "the child really does exit 0")
+        self.assertEqual(done.status, "failed")
+        text = "\n".join(done.lines)
+        # The log must explain itself: which interpreter, which project root,
+        # and what to run to check by hand.
+        self.assertIn(self.manager.project_root, text)
+        self.assertIn("pdbenergy.cli", text)
+        self.assertIn("-c", text)
+
+    def test_real_missing_module_is_failed_and_explained(self):
+        """End to end: ask for a module that does not exist, anywhere."""
+        job = self.manager.start("nope", ["--help"], module="pdbenergy.no_such_module")
+        done = self._wait(job.id)
+        self.assertEqual(done.status, "failed")
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("no_such_module", "\n".join(done.lines))
+
+    def test_manager_falls_back_to_the_project_root(self):
+        # Started from a shortcut, ``os.getcwd()`` can be anywhere - even a
+        # directory that no longer exists.  Jobs must still find data/.
+        self.assertEqual(JobManager().cwd, project_root())
+
+    def test_missing_cwd_does_not_break_launching(self):
+        missing = os.path.join(self.dir, "was-renamed-away")
+        manager = JobManager(missing)
+        self.assertEqual(manager.cwd, project_root())
+        job = manager.start("help", ["--help"])
+        self.assertEqual(self._wait_for(manager, job.id).status, "done")
+        manager.shutdown()
+
+    def test_child_env_puts_the_project_root_first_on_pythonpath(self):
+        manager = JobManager(self.dir)
+        parts = manager.child_env()["PYTHONPATH"].split(os.pathsep)
+        self.assertEqual(parts[0], manager.project_root)
+
+    @staticmethod
+    def _wait_for(manager, job_id, timeout=60.0):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            job = manager.get(job_id)
+            if job.status != "running":
+                return job
+            time.sleep(0.05)
+        raise AssertionError(f"job {job_id} did not finish within {timeout}s")
 
     def test_cancel_terminates_a_running_job(self):
         script = os.path.join(self.dir, "sleeper.py")
@@ -147,6 +211,31 @@ class TestJobManager(unittest.TestCase):
 
     def test_shutdown_is_safe_with_nothing_running(self):
         self.assertEqual(self.manager.shutdown(), 0)
+
+
+class TestDirectoryResolution(unittest.TestCase):
+    """The GUI's directory arguments are relative by default, so they must be
+    anchored to the project - not to whatever cwd the launcher happened to use.
+
+    Getting this wrong is silent: the interface simply reports an empty project
+    (``data/raw  0 pdb files``) and jobs write their outputs somewhere else.
+    """
+
+    def test_relative_defaults_resolve_against_the_project(self):
+        root = project_root()
+        self.assertEqual(resolve_dir("data/raw"), os.path.join(root, "data", "raw"))
+        self.assertEqual(resolve_dir("outputs"), os.path.join(root, "outputs"))
+        self.assertEqual(resolve_dir("data/raw", root=root),
+                         os.path.join(root, "data", "raw"))
+
+    def test_absolute_paths_are_left_alone(self):
+        other = os.path.join(tempfile.gettempdir(), "pdbenergy-outputs")
+        self.assertEqual(resolve_dir(other), os.path.normpath(other))
+
+    def test_a_root_override_wins(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(resolve_dir("data/raw", root=tmp),
+                             os.path.join(tmp, "data", "raw"))
 
 
 class TestUsableAt(unittest.TestCase):

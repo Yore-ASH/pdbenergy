@@ -472,6 +472,20 @@ def cmd_all(args) -> int:
 # --------------------------------------------------------------------------- #
 
 
+def cmd_gui(args) -> int:
+    """Launch the local web GUI (a browser front end over this same CLI)."""
+    from .gui import main as gui_main
+
+    argv = ["--host", args.host, "--port", str(args.port),
+            "--raw-dir", args.raw_dir, "--interim-dir", args.interim_dir,
+            "--processed-dir", args.processed_dir, "--outputs-dir", args.outputs_dir]
+    if getattr(args, "config", None):
+        argv += ["--config", args.config]
+    if getattr(args, "no_browser", False):
+        argv.append("--no-browser")
+    return gui_main(argv)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="pdbenergy",
@@ -589,6 +603,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--run-dir", default=None)
     p.add_argument("--eval-dir", default=None)
     p.set_defaults(func=cmd_all)
+
+    p = sub.add_parser("gui", help="launch the local web GUI (data / train / predict)")
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", type=int, default=8765)
+    p.add_argument("--no-browser", action="store_true",
+                   help="do not try to open a browser window")
+    p.set_defaults(func=cmd_gui)
 
     return parser
 

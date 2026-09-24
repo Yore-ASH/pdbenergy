@@ -4,9 +4,9 @@
     "model_index": 1,
     "n_atoms": 304,
     "n_residues": 20,
-    "predicted_relative_energy_kcal_per_mol": 63.42341568819419,
-    "true_relative_energy_kcal_per_mol": 0.0,
-    "error_kcal_per_mol": 63.42341568819419,
+    "predicted_relative_energy_kcal_per_mol": 63.82893247726744,
+    "true_relative_energy_kcal_per_mol": 69.1674540898806,
+    "error_kcal_per_mol": -5.33852161261315,
     "sequence": "NLYIQWLKDGGPSSGRPPPS",
     "path": "data/raw/1L2Y.pdb"
   },
@@ -15,20 +15,9 @@
     "model_index": 2,
     "n_atoms": 304,
     "n_residues": 20,
-    "predicted_relative_energy_kcal_per_mol": 76.3532870179063,
-    "true_relative_energy_kcal_per_mol": 255.956722132029,
-    "error_kcal_per_mol": -179.6034351141227,
-    "sequence": "NLYIQWLKDGGPSSGRPPPS",
-    "path": "data/raw/1L2Y.pdb"
-  },
-  {
-    "name": "1L2Y",
-    "model_index": 3,
-    "n_atoms": 304,
-    "n_residues": 20,
-    "predicted_relative_energy_kcal_per_mol": 71.148799726113,
-    "true_relative_energy_kcal_per_mol": 39.003913324074446,
-    "error_kcal_per_mol": 32.14488640203855,
+    "predicted_relative_energy_kcal_per_mol": 74.26632676628938,
+    "true_relative_energy_kcal_per_mol": 0.0,
+    "error_kcal_per_mol": 74.26632676628938,
     "sequence": "NLYIQWLKDGGPSSGRPPPS",
     "path": "data/raw/1L2Y.pdb"
   }

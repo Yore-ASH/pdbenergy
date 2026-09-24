@@ -1,0 +1,15 @@
+{
+  "pdb_id": "1AMC",
+  "n_frames": 55,
+  "n_atoms": 438,
+  "reference_energy_kcal": -1208.983063176438,
+  "energy_min_kcal": -1208.983063176438,
+  "energy_max_kcal": -881.4664669214917,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "nmr": 1,
+    "torsion": 48
+  },
+  "sequence": "DAEFRHDSGYEVHHQKLVFFAEDVGSNK"
+}

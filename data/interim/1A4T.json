@@ -1,0 +1,15 @@
+{
+  "pdb_id": "1A4T",
+  "n_frames": 56,
+  "n_atoms": 350,
+  "reference_energy_kcal": -2243.6620966163628,
+  "energy_min_kcal": -2243.6620966163628,
+  "energy_max_kcal": -1974.7747861654716,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "nmr": 2,
+    "torsion": 48
+  },
+  "sequence": "NAKTRRHERRRKLAIERDT"
+}

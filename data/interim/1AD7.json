@@ -1,0 +1,14 @@
+{
+  "pdb_id": "1AD7",
+  "n_frames": 54,
+  "n_atoms": 201,
+  "reference_energy_kcal": -885.1688950358676,
+  "energy_min_kcal": -885.1688950358676,
+  "energy_max_kcal": -637.3592298706675,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "torsion": 48
+  },
+  "sequence": "GELQNQLIRKSN"
+}

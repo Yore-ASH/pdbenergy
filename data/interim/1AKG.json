@@ -1,0 +1,14 @@
+{
+  "pdb_id": "1AKG",
+  "n_frames": 54,
+  "n_atoms": 209,
+  "reference_energy_kcal": -349.95564193819786,
+  "energy_min_kcal": -349.95564193819786,
+  "energy_max_kcal": -188.02524486294232,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "torsion": 48
+  },
+  "sequence": "GCCSLPPCALSNPDYC"
+}

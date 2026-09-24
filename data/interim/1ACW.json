@@ -1,0 +1,15 @@
+{
+  "pdb_id": "1ACW",
+  "n_frames": 57,
+  "n_atoms": 410,
+  "reference_energy_kcal": -961.628768848477,
+  "energy_min_kcal": -961.628768848477,
+  "energy_max_kcal": -673.2436378973907,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "nmr": 3,
+    "torsion": 48
+  },
+  "sequence": "VSCEDCPEHCSTQKAQAKCDNDKCVCEPI"
+}

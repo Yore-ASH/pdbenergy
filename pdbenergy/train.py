@@ -540,10 +540,12 @@ def save_checkpoint(
             os.path.join(out_dir, STATE_FILENAME),
         )
 
-    with open(os.path.join(out_dir, "history.json"), "w", encoding="utf-8") as fh:
-        json.dump(result.history, fh, indent=2)
-    with open(os.path.join(out_dir, "data_summary.json"), "w", encoding="utf-8") as fh:
-        json.dump(bundle.summary(), fh, indent=2)
+    # jsonutil maps non-finite floats to null: val_mae is NaN when a run is
+    # stopped before any evaluation, and the bare NaN token is not valid JSON.
+    from .jsonutil import dump_json
+
+    dump_json(os.path.join(out_dir, "history.json"), result.history)
+    dump_json(os.path.join(out_dir, "data_summary.json"), bundle.summary())
     bundle.cfg.save(os.path.join(out_dir, "config.json"))
     return path
 

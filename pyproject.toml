@@ -44,12 +44,18 @@ dependencies = [
 
 [project.optional-dependencies]
 physics = ["openmm>=8.1", "pdbfixer>=1.9"]
+# Desktop interface.  Deliberately optional: PySide6 is ~100 MB, and the CLI,
+# the training/evaluation path and the dependency-free browser GUI
+# (`pdbenergy web`) all work without it.
+gui = ["PySide6>=6.6"]
 dev = ["pytest>=8.0"]
 
 [project.scripts]
-# After `pip install -e .` this makes the CLI available as a command:
+# After `pip install -e .` these become commands:
 #   pdbenergy --help
 pdbenergy = "pdbenergy.cli:main"
+# Same entry point, but discoverable as "the GUI" in a shell / Start menu.
+pdbenergy-gui = "pdbenergy.gui_qt:main"
 
 [project.urls]
 Homepage = "https://github.com/Yore-ASH/pdbenergy"

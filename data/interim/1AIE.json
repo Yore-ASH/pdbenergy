@@ -1,0 +1,14 @@
+{
+  "pdb_id": "1AIE",
+  "n_frames": 54,
+  "n_atoms": 522,
+  "reference_energy_kcal": -2254.9541382065954,
+  "energy_min_kcal": -2254.9541382065954,
+  "energy_max_kcal": -1832.2058328489445,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "torsion": 48
+  },
+  "sequence": "EYFTLQIRGRERFEMFRELNEALELKDAQAG"
+}

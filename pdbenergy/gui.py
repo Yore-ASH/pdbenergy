@@ -386,7 +386,12 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def _json(self, payload: Any, status: int = 200) -> None:
-        body = json.dumps(payload, default=str).encode("utf-8")
+        # jsonutil strips NaN/Infinity: Python emits them as bare tokens, which
+        # are not valid JSON, so the browser fails with
+        # "Unexpected token 'N', ... is not valid JSON".
+        from .jsonutil import dumps_json
+
+        body = dumps_json(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -548,121 +553,21 @@ class Handler(BaseHTTPRequestHandler):
     def _start_job(self, body: dict[str, Any]) -> None:
         """Turn a request from the UI into a CLI invocation.
 
-        The GUI deliberately only chooses *arguments*; every decision about what
-        the arguments mean lives in the CLI.  That keeps the log the GUI shows
-        sufficient to reproduce the run by hand.
+        The mapping itself lives in :mod:`pdbenergy.actions` so the desktop GUI
+        and this one cannot drift apart; here we only translate its errors into
+        an HTTP status and hand the command to the job manager.
         """
-        action = body.get("action")
+        from .actions import ActionError, build_job
 
-        if action == "download":
-            args = ["download"]
-            ids = [i for i in (body.get("ids") or []) if i]
-            if ids:
-                args += ["--ids", *ids]
-            if body.get("force"):
-                args.append("--force")
-            return self._ok("download", "pdbenergy.cli", args)
-
-        if action == "scan":
-            args = ["inventory", "--no-table",
-                    "--max-residues", str(int(body.get("max_residues", 120))),
-                    "--min-residues", str(int(body.get("min_residues", 10)))]
-            return self._ok("scan raw entries", "pdbenergy.cli", args)
-
-        if action == "label":
-            ids = [i for i in (body.get("ids") or []) if i]
-            if not ids:
-                return self._json({"error": "no entries selected"}, 400)
-            args = ["ensemble", "--ids", *ids,
-                    "--threads", str(int(body.get("threads", 8))),
-                    "--workers", str(int(body.get("workers", 1)))]
-            if body.get("overwrite"):
-                args.append("--overwrite")
-            return self._ok(f"label {len(ids)} entries", "pdbenergy.cli", args)
-
-        if action == "dataset":
-            return self._ok("build dataset", "pdbenergy.cli", ["dataset"])
-
-        if action == "train":
-            args = ["train", "--model", str(body.get("model", "schnet"))]
-            for flag, key, cast in (("--epochs", "epochs", int),
-                                    ("--batch-size", "batch_size", int),
-                                    ("--learning-rate", "learning_rate", float),
-                                    ("--hidden-dim", "hidden_dim", int),
-                                    ("--interactions", "interactions", int),
-                                    ("--tag", "tag", str),
-                                    ("--split-mode", "split_mode", str)):
-                value = body.get(key)
-                if value not in (None, "", 0, 0.0):
-                    args += [flag, str(cast(value))]
-            if body.get("init_from"):
-                args += ["--init-from", str(body["init_from"])]
-            if body.get("resume"):
-                args += ["--resume", str(body["resume"])]
-            if body.get("recompute_normalisation"):
-                args.append("--recompute-normalisation")
-            if body.get("no_cache_graphs"):
-                args.append("--no-cache-graphs")
-            tag = body.get("tag") or f"{body.get('model', 'schnet')}_protein"
-            return self._ok(f"train {body.get('model', 'schnet')} -> {tag}",
-                            "pdbenergy.cli", args)
-
-        if action == "evaluate":
-            run_dir = body.get("run_dir")
-            if not run_dir:
-                return self._json({"error": "no run selected"}, 400)
-            return self._ok(f"evaluate {os.path.basename(run_dir)}", "pdbenergy.cli",
-                            ["evaluate", "--run-dir", str(run_dir)])
-
-        if action == "predict":
-            paths = [p for p in (body.get("paths") or []) if p]
-            if not paths:
-                return self._json({"error": "no PDB files given"}, 400)
-            checkpoint = body.get("checkpoint")
-            if not checkpoint:
-                return self._json({"error": "no checkpoint selected"}, 400)
-            args = ["predict", *paths, "--checkpoint", str(checkpoint),
-                    "--max-models", str(int(body.get("max_models", 1))),
-                    "--threads", str(int(body.get("threads", 4))),
-                    "--json", os.path.join(self.dirs["outputs"], "predictions.json"),
-                    "--quiet"]
-            if body.get("verify"):
-                args.append("--verify")
-            return self._ok(f"predict {len(paths)} file(s)", "pdbenergy.cli", args)
-
-        if action == "ablate":
-            args = ["ablate", "--epochs", str(int(body.get("epochs", 20))),
-                    "--model", str(body.get("model", "mlp"))]
-            return self._ok("split-leakage ablation", "pdbenergy.cli", args)
-
-        if action == "measure_leakage":
-            return self._ok("leakage measurement",
-                            os.path.join("scripts", "measure_leakage.py"), [])
-        if action == "estimate_workload":
-            return self._ok("workload estimate",
-                            os.path.join("scripts", "estimate_workload.py"), [])
-
-        if action == "iterate":
-            args = ["--rounds", str(int(body.get("rounds", 1)))]
-            if body.get("build_new", True):
-                args.append("--build-new")
-            else:
-                args.append("--no-build-new")
-            if body.get("build_limit"):
-                args += ["--build-limit", str(int(body["build_limit"]))]
-            if body.get("max_residues"):
-                args += ["--max-residues", str(int(body["max_residues"]))]
-            if not body.get("warm_start", True):
-                args.append("--no-warm-start")
-            if body.get("epochs"):
-                args += ["--epochs", str(int(body["epochs"]))]
-            if body.get("model"):
-                args += ["--model", str(body["model"])]
-            args += ["--threads", str(int(body.get("threads", 8))),
-                     "--workers", str(int(body.get("workers", 1)))]
-            return self._ok(f"iterate x{body.get('rounds', 1)}", "pdbenergy.iterate", args)
-
-        return self._json({"error": f"unknown action {action!r}"}, 400)
+        if not body:
+            return self._json({"error": "empty request"}, 400)
+        try:
+            label, module, args = build_job(
+                body.get("action"), body, outputs_dir=self.dirs["outputs"]
+            )
+        except ActionError as exc:
+            return self._json({"error": str(exc)}, 400)
+        return self._ok(label, module, args)
 
     def _ok(self, label: str, module: str, args: list[str]) -> None:
         job = self.manager.start(label, args, module=module)

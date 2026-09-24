@@ -1,0 +1,15 @@
+{
+  "pdb_id": "1ALE",
+  "n_frames": 57,
+  "n_atoms": 294,
+  "reference_energy_kcal": -1026.2746893013718,
+  "energy_min_kcal": -1026.2723829731813,
+  "energy_max_kcal": -814.9313330342915,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "nmr": 3,
+    "torsion": 48
+  },
+  "sequence": "ALDKLKEFGNTLEDKARE"
+}

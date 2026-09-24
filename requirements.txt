@@ -1,17 +1,37 @@
-# Core scientific stack.
-# torch is installed from the CPU wheel index in this project:
-#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+# ---------------------------------------------------------------------------
+# pdbenergy — 依赖清单
+#
+# 安装（推荐先建虚拟环境）：
+#     python -m venv .venv
+#     .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+#     .\.venv\Scripts\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+#     .\.venv\Scripts\python.exe -m pip install -e .
+#
+# CPU 版 PyTorch 必须显式指定索引：Windows 上 PyPI 的 torch 就是 CPU 版，
+# Linux 上默认会拉 2.5 GB 的 CUDA 轮子。
+# ---------------------------------------------------------------------------
+
+# --- 核心科学栈（训练与评估只需要这三个）---------------------------------
 torch>=2.4
 numpy>=1.26
 matplotlib>=3.8
 
-# Physics engine that produces the ground-truth energy labels.
-# OpenMM ships the AMBER14 force field and the GBn2 implicit solvent XML files;
-# PDBFixer repairs structures and adds hydrogens.
+# --- 物理引擎：产生真值能量标签 -------------------------------------------
+# OpenMM 自带 AMBER14 力场与 GBn2 隐式溶剂 XML；PDBFixer 负责修补结构、加氢。
+# 只有「打标签 / 预测（要加氢）/ verify」需要它们，训练和评估不需要。
 openmm>=8.1
 pdbfixer>=1.9
 
-# Optional: faster/better PDB parsing and analysis. Not required - this project
-# ships its own parser so that the data path has no hidden dependencies.
+# --- 桌面图形界面（可选）--------------------------------------------------
+# PySide6 是唯一一个"重"依赖（约 100 MB），所以不放在默认清单里。
+# 需要界面时用下面任一条命令：
+#     pip install -r requirements-gui.txt
+#     pip install -e ".[gui]"
+# 不装也能用命令行，以及不用 PySide6 的浏览器版界面（pdbenergy web）。
+# PySide6>=6.6
+
+# --- 本项目刻意不依赖的包 -------------------------------------------------
+# 自带 PDB 固定列解析器，不需要 biopython；
+# 自带 RBF / 邻居表 / 统计实现，不需要 scipy。
 # biopython>=1.83
 # scipy>=1.11

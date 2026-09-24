@@ -46,7 +46,11 @@ SLEEPER = "import time, sys\nprint('started', flush=True)\nfor i in range(120):\
 
 class TestJobManager(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
+        # ignore_cleanup_errors: every job runs with this directory as its cwd, so
+        # on Windows the removal can race a closing process handle and fail with
+        # WinError 32.  The assertions have already run by then; failing the whole
+        # suite over a leftover directory in %TEMP% would be noise.
+        self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.dir = self.tmp.name
         self.manager = JobManager(self.dir)
 
@@ -291,7 +295,7 @@ class TestHTTPSurface(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.tmp = tempfile.TemporaryDirectory()
+        cls.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         root = cls.tmp.name
         cls.raw = os.path.join(root, "raw")
         cls.interim = os.path.join(root, "interim")

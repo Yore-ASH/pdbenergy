@@ -1,0 +1,15 @@
+{
+  "pdb_id": "1AG7",
+  "n_frames": 57,
+  "n_atoms": 427,
+  "reference_energy_kcal": -1614.146290763668,
+  "energy_min_kcal": -1614.146290763668,
+  "energy_max_kcal": -1304.6155780299794,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "nmr": 3,
+    "torsion": 48
+  },
+  "sequence": "ACSGRGSRCQCCMGLRCGRGNPQKCIGAHDV"
+}

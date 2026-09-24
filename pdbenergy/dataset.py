@@ -202,8 +202,9 @@ class DataBundle:
             "split_mode": self.split_mode,
             "target": self.target,
         }
-        with open(path, "w", encoding="utf-8") as fh:
-            json.dump(payload, fh, indent=2)
+        from .jsonutil import dump_json
+
+        dump_json(path, payload)
         return path
 
 

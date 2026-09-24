@@ -193,8 +193,12 @@ class IterationRegistry:
 
     def append(self, record: RoundRecord) -> None:
         os.makedirs(self.out_dir, exist_ok=True)
+        # jsonutil: a round's metrics can be NaN (e.g. no protein had enough
+        # frames for a rank correlation); the bare NaN token is not valid JSON.
+        from .jsonutil import dumps_json
+
         with open(self.jsonl, "a", encoding="utf-8") as fh:
-            fh.write(json.dumps(record.to_dict(), ensure_ascii=False) + "\n")
+            fh.write(dumps_json(record.to_dict()) + "\n")
         self.render()
 
     def best(self, key: str = "val_mae") -> dict[str, Any] | None:

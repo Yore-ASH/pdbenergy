@@ -246,11 +246,16 @@ def inventory(
 
 
 def write_json(path: str, payload) -> str:
-    """Small helper: pretty-print JSON next to the data it describes."""
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as fh:
-        json.dump(payload, fh, indent=2, default=str)
-    return path
+    """Write strict JSON next to the data it describes.
+
+    Delegates to :mod:`pdbenergy.jsonutil` so that undefined metrics (NaN) become
+    JSON ``null`` instead of the bare ``NaN`` token - the latter is a Python
+    extension, not valid JSON, and every strict parser (including browsers)
+    rejects it.
+    """
+    from .jsonutil import dump_json
+
+    return dump_json(path, payload)
 
 
 def print_inventory(reports: Iterable[EntryReport]) -> None:

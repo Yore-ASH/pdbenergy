@@ -473,8 +473,32 @@ def cmd_all(args) -> int:
 
 
 def cmd_gui(args) -> int:
-    """Launch the local web GUI (a browser front end over this same CLI)."""
-    from .gui import main as gui_main
+    """Launch the PySide6 desktop GUI.
+
+    Falls back to the browser GUI with a clear message when PySide6 is missing,
+    rather than dying with an ImportError: the dependency-free web version can do
+    everything the desktop one can.
+    """
+    try:
+        import PySide6  # noqa: F401
+    except ImportError:
+        print("未检测到 PySide6，改用浏览器版界面（功能相同）。")
+        print('要装桌面版：pip install -e ".[gui]" 或 pip install -r requirements-gui.txt')
+        print()
+        return cmd_web(args)
+
+    from .gui_qt import main as qt_main
+
+    argv = ["--raw-dir", args.raw_dir, "--interim-dir", args.interim_dir,
+            "--processed-dir", args.processed_dir, "--outputs-dir", args.outputs_dir]
+    if getattr(args, "config", None):
+        argv += ["--config", args.config]
+    return qt_main(argv)
+
+
+def cmd_web(args) -> int:
+    """Launch the browser GUI (standard library only, no PySide6 needed)."""
+    from .gui import main as web_main
 
     argv = ["--host", args.host, "--port", str(args.port),
             "--raw-dir", args.raw_dir, "--interim-dir", args.interim_dir,
@@ -483,7 +507,7 @@ def cmd_gui(args) -> int:
         argv += ["--config", args.config]
     if getattr(args, "no_browser", False):
         argv.append("--no-browser")
-    return gui_main(argv)
+    return web_main(argv)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -604,12 +628,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--eval-dir", default=None)
     p.set_defaults(func=cmd_all)
 
-    p = sub.add_parser("gui", help="launch the local web GUI (data / train / predict)")
+    p = sub.add_parser("gui", help="launch the PySide6 desktop GUI (训练/预测/测试)")
+    p.add_argument("--host", default="127.0.0.1", help="仅 web 版使用")
+    p.add_argument("--port", type=int, default=8765, help="仅 web 版使用")
+    p.add_argument("--no-browser", action="store_true",
+                   help="仅 web 版使用：不自动打开浏览器")
+    p.set_defaults(func=cmd_gui)
+
+    p = sub.add_parser("web", help="launch the browser GUI (no PySide6 required)")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8765)
     p.add_argument("--no-browser", action="store_true",
                    help="do not try to open a browser window")
-    p.set_defaults(func=cmd_gui)
+    p.set_defaults(func=cmd_web)
 
     return parser
 

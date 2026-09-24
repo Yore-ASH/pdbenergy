@@ -1,0 +1,14 @@
+{
+  "pdb_id": "1AL4",
+  "n_frames": 44,
+  "n_atoms": 284,
+  "reference_energy_kcal": 37.57102902125119,
+  "energy_min_kcal": 37.57102902125119,
+  "energy_max_kcal": 651.4627905312902,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "torsion": 38
+  },
+  "sequence": "GAAVWWWWGAAVWWWW"
+}

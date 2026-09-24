@@ -1,0 +1,14 @@
+{
+  "pdb_id": "1A13",
+  "n_frames": 54,
+  "n_atoms": 237,
+  "reference_energy_kcal": -253.29637296829625,
+  "energy_min_kcal": -253.29637296829625,
+  "energy_max_kcal": -75.06282193908044,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "torsion": 48
+  },
+  "sequence": "INWKGIAAMAKKLL"
+}

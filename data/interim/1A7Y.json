@@ -1,0 +1,14 @@
+{
+  "pdb_id": "1A7Y",
+  "n_frames": 54,
+  "n_atoms": 177,
+  "reference_energy_kcal": 369.4829290780511,
+  "energy_min_kcal": 369.4829290780511,
+  "energy_max_kcal": 581.2902206043359,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "torsion": 48
+  },
+  "sequence": "TPTPTPTPTPTP"
+}

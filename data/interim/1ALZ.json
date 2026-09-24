@@ -1,0 +1,14 @@
+{
+  "pdb_id": "1ALZ",
+  "n_frames": 53,
+  "n_atoms": 281,
+  "reference_energy_kcal": 542.3742901141168,
+  "energy_min_kcal": 542.3742901141168,
+  "energy_max_kcal": 2377.586938069557,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "torsion": 47
+  },
+  "sequence": "GAAVWYWWGAAVWWWW"
+}

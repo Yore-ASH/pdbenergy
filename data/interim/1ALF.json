@@ -1,0 +1,15 @@
+{
+  "pdb_id": "1ALF",
+  "n_frames": 57,
+  "n_atoms": 339,
+  "reference_energy_kcal": -910.560702796655,
+  "energy_min_kcal": -910.560702796655,
+  "energy_max_kcal": -641.5989777120495,
+  "sources": {
+    "md300K": 3,
+    "md450K": 3,
+    "nmr": 3,
+    "torsion": 48
+  },
+  "sequence": "SAKMREWFSETFQKVKEKL"
+}

@@ -1,5 +1,5 @@
 {
-  "run_dir": "outputs/mlp_protein",
+  "run_dir": "outputs\\mlp_protein",
   "model_kind": "mlp",
   "descriptor_mode": true,
   "target": "relative",
@@ -59,8 +59,8 @@
           "mae": 152.7408397190153,
           "rmse": 299.70912022349796,
           "r2": -0.05879897394680955,
-          "pearson": NaN,
-          "spearman": NaN,
+          "pearson": null,
+          "spearman": null,
           "bias": -70.62819001704517
         },
         "1UBQ": {
@@ -68,8 +68,8 @@
           "mae": 126.21966219693968,
           "rmse": 221.28519761423325,
           "r2": -0.05206709154266864,
-          "pearson": NaN,
-          "spearman": NaN,
+          "pearson": null,
+          "spearman": null,
           "bias": -49.22801281933035
         },
         "1VII": {
@@ -88,8 +88,8 @@
           "mae": 378.7355357198491,
           "rmse": 419.9975945297647,
           "r2": -4.3523069724979955,
-          "pearson": NaN,
-          "spearman": NaN,
+          "pearson": null,
+          "spearman": null,
           "bias": -378.7355357198491
         },
         "md450K": {
@@ -97,8 +97,8 @@
           "mae": 637.0193617426758,
           "rmse": 691.5439793901867,
           "r2": -5.601835759596233,
-          "pearson": NaN,
-          "spearman": NaN,
+          "pearson": null,
+          "spearman": null,
           "bias": -637.0193617426758
         },
         "torsion": {
@@ -113,9 +113,9 @@
       },
       "rank_discrimination": {
         "per_protein_spearman": {},
-        "mean_spearman": NaN,
-        "median_spearman": NaN,
-        "fraction_above_0.5": NaN
+        "mean_spearman": null,
+        "median_spearman": null,
+        "fraction_above_0.5": null
       },
       "energy_range": {
         "true_min": 5.6355288506892975e-06,
@@ -131,8 +131,8 @@
         "mae": 105.97422208947751,
         "rmse": 166.67453201705635,
         "r2": -0.001794964231787377,
-        "pearson": NaN,
-        "spearman": NaN,
+        "pearson": null,
+        "spearman": null,
         "bias": -7.055173879130142
       },
       "per_protein": {
@@ -150,8 +150,8 @@
           "mae": 106.75585706441267,
           "rmse": 168.31594262153814,
           "r2": -0.0032202339929989776,
-          "pearson": NaN,
-          "spearman": NaN,
+          "pearson": null,
+          "spearman": null,
           "bias": -9.536100672081007
         },
         "3GB1": {
@@ -159,8 +159,8 @@
           "mae": 103.17216401736607,
           "rmse": 159.93213133040166,
           "r2": -0.005732915760674029,
-          "pearson": NaN,
-          "spearman": NaN,
+          "pearson": null,
+          "spearman": null,
           "bias": -12.07486191701093
         },
         "5PTI": {
@@ -179,8 +179,8 @@
           "mae": 325.6471186239975,
           "rmse": 327.3083431649484,
           "r2": -97.76481491775257,
-          "pearson": NaN,
-          "spearman": NaN,
+          "pearson": null,
+          "spearman": null,
           "bias": -325.6471186239975
         },
         "md450K": {
@@ -188,8 +188,8 @@
           "mae": 550.2752785838719,
           "rmse": 553.1118485035574,
           "r2": -96.74724319664699,
-          "pearson": NaN,
-          "spearman": NaN,
+          "pearson": null,
+          "spearman": null,
           "bias": -550.2752785838719
         },
         "nmr": {
@@ -197,8 +197,8 @@
           "mae": 37.54986254417597,
           "rmse": 41.82897306546685,
           "r2": -4.151054883084969,
-          "pearson": NaN,
-          "spearman": NaN,
+          "pearson": null,
+          "spearman": null,
           "bias": 37.54986254417597
         },
         "torsion": {
@@ -213,9 +213,9 @@
       },
       "rank_discrimination": {
         "per_protein_spearman": {},
-        "mean_spearman": NaN,
-        "median_spearman": NaN,
-        "fraction_above_0.5": NaN
+        "mean_spearman": null,
+        "median_spearman": null,
+        "fraction_above_0.5": null
       },
       "energy_range": {
         "true_min": 5.6355288506892975e-06,
@@ -258,16 +258,16 @@
     }
   },
   "artifacts": {
-    "parity_val": "outputs/mlp_protein\\eval\\parity_val.png",
-    "residuals_val": "outputs/mlp_protein\\eval\\residuals_val.png",
-    "per_protein_val": "outputs/mlp_protein\\eval\\per_protein_val.png",
-    "per_source_val": "outputs/mlp_protein\\eval\\per_source_val.png",
-    "parity_test": "outputs/mlp_protein\\eval\\parity_test.png",
-    "residuals_test": "outputs/mlp_protein\\eval\\residuals_test.png",
-    "per_protein_test": "outputs/mlp_protein\\eval\\per_protein_test.png",
-    "per_source_test": "outputs/mlp_protein\\eval\\per_source_test.png",
-    "learning_curve": "outputs/mlp_protein\\eval\\learning_curve.png",
-    "energy_distribution": "outputs/mlp_protein\\eval\\energy_distribution.png",
-    "per_protein_range": "outputs/mlp_protein\\eval\\per_protein_range.png"
+    "parity_val": "outputs\\mlp_protein\\eval\\parity_val.png",
+    "residuals_val": "outputs\\mlp_protein\\eval\\residuals_val.png",
+    "per_protein_val": "outputs\\mlp_protein\\eval\\per_protein_val.png",
+    "per_source_val": "outputs\\mlp_protein\\eval\\per_source_val.png",
+    "parity_test": "outputs\\mlp_protein\\eval\\parity_test.png",
+    "residuals_test": "outputs\\mlp_protein\\eval\\residuals_test.png",
+    "per_protein_test": "outputs\\mlp_protein\\eval\\per_protein_test.png",
+    "per_source_test": "outputs\\mlp_protein\\eval\\per_source_test.png",
+    "learning_curve": "outputs\\mlp_protein\\eval\\learning_curve.png",
+    "energy_distribution": "outputs\\mlp_protein\\eval\\energy_distribution.png",
+    "per_protein_range": "outputs\\mlp_protein\\eval\\per_protein_range.png"
   }
 }

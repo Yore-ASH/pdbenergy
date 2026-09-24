@@ -436,8 +436,13 @@ def evaluate_run(
     )
 
     metrics_path = os.path.join(out_dir, "metrics.json")
-    with open(metrics_path, "w", encoding="utf-8") as fh:
-        json.dump(report, fh, indent=2)
+    # Via jsonutil: several metrics are NaN when undefined (R^2 with zero target
+    # variance, a correlation over one sample).  Python would write the bare token
+    # NaN, which is not valid JSON and breaks every strict reader - the browser
+    # GUI failed with "Unexpected token 'N' ... is not valid JSON" because of it.
+    from .jsonutil import dump_json
+
+    dump_json(metrics_path, report)
     report["artifacts"]["metrics"] = metrics_path
     return report
 

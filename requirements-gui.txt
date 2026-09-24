@@ -1,0 +1,16 @@
+# 完整安装：核心依赖 + 物理引擎 + PySide6 桌面界面
+#
+#     python -m venv .venv
+#     .\.venv\Scripts\python.exe -m pip install -r requirements-gui.txt
+#     .\.venv\Scripts\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+#     .\.venv\Scripts\python.exe -m pip install -e .
+#
+# 最后一步的 pip install -e . 会注册 pdbenergy 命令并让 pdbenergy 包
+# 从任何目录都能导入。少做这一步的典型症状：
+#     ModuleNotFoundError: No module named 'pdbenergy'
+# 只在项目根目录外出现。
+
+-r requirements.txt
+
+# 桌面界面（PySide6，约 100 MB）
+PySide6>=6.6

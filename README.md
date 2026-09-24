@@ -106,22 +106,46 @@ for pred in predictor.predict_file("my_structure.pdb"):
 
 ### 方式四：图形界面
 
+两套界面，功能相同，共用同一套底层：
+
 ```powershell
-python -m pdbenergy.gui          # 浏览器打开 http://127.0.0.1:8765
-pdbenergy gui --port 9000        # 等价写法，可换端口
+pdbenergy gui                    # PySide6 桌面窗口（推荐）
+pdbenergy-gui                    # 同上，独立命令
+python -m pdbenergy.gui_qt
+
+pdbenergy web                    # 浏览器版，不需要 PySide6
+python -m pdbenergy.gui --port 9000
 ```
 
-零新依赖（只用标准库 `http.server`），离线可用。六个面板：**概览 / 数据打标签 /
-训练 / 评估测试 / 预测 / 迭代训练**，底部是共享的实时日志，长任务可随时取消。
+安装桌面版：
 
-设计上的两个要点：
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-gui.txt   # 或 pip install -e ".[gui]"
+```
+
+没装 PySide6 时 `pdbenergy gui` **会自动回退到浏览器版**并说明原因，不会报 ImportError。
+
+**七个页面**：概览 / 数据打标签 / 训练 / 评估测试 / 预测 / 迭代训练 / 帮助常见问题。
+底部是共享的**实时日志 + 命令行预览**，长任务可随时取消。
+
+字体：正文 **Times New Roman**（中文回退宋体），**代码区一律等宽**
+（Consolas）——实时日志、命令行预览、路径输入框。日志用等宽是刚需：
+力场输出是数字列，比例字体会让它们参差不齐。
+
+名词注解：界面上凡是需要做决定的控件都挂了 `tooltip`，鼠标悬停即出解释
+（例如「预测跨度」= (预测最大值−最小值)/(真实最大值−最小值)，只有百分之几说明模型在输出常数）。
+完整术语表在「帮助」页。
+
+设计上的三个要点（两个界面共有）：
 
 * **长任务跑在子进程里**——打标签几分钟、训练几十分钟，绝不阻塞界面；
-  每行输出实时回传，取消是真的 `terminate`。
-* **界面只拼命令行参数**，逻辑全在 CLI 里。所以日志里显示的命令行可以直接复制到终端
-  重跑——出问题时你能手工复现，而不是对着黑盒猜。
+  每行输出实时回传，取消是真的 `terminate`；**关窗口时会终止所有子任务**，
+  否则 OpenMM 会继续占满核心跑几小时。
+* **界面只拼命令行参数**，逻辑全在 CLI 里（映射表在 `pdbenergy/actions.py`，
+  两个界面共用）。所以日志里显示的命令行可以直接复制到终端重跑。
+* **自动回调绝不弹模态对话框**——只在写日志。否则任何任务一结束界面就会卡住等用户点「确定」。
 
-服务只绑 `127.0.0.1`，没有鉴权（因为不可远程访问），**不要把端口暴露出去**。
+浏览器版只绑 `127.0.0.1`，没有鉴权（因为不可远程访问），**不要把端口暴露出去**。
 
 ## 迭代训练：加数据，看精度真的提升
 
@@ -196,7 +220,10 @@ pdbenergy/
   leakage.py     不依赖模型的数据泄漏直接测量
   predict.py     单文件推理：PDB → 能量
   iterate.py     迭代训练：冻结切分 + 多轮热启动 + 轮次登记
-  gui.py         本地 Web 图形界面（标准库 HTTP 服务 + 单页前端）
+  actions.py     界面动作 → 命令行的唯一映射（两个界面共用）
+  gui_qt.py      PySide6 桌面界面（七个页面，代码区等宽字体）
+  gui.py         浏览器版界面（标准库 HTTP 服务 + 单页前端，零依赖）
+  jsonutil.py    严格 JSON 输出：把 NaN/Infinity 写成 null，避免非法 JSON
   cli.py         命令行入口
 examples/        可运行示例（命令行 / 脚本 / 库三种用法）
 configs/         默认与快速配置（`--config configs/quick.json`）
@@ -227,7 +254,14 @@ CI（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)）分两个 job：
 * 原子顺序置换、整体旋转平移**不改变**模型输出；
 * 二面角旋转**精确保持**所有键长与键角；
 * 能量分解的四项之**和等于**总能量；
-* 按蛋白质切分是**互斥且完整**的，且对同一种子可复现。
+* 按蛋白质切分是**互斥且完整**的，且对同一种子可复现；
+* GUI 的 `on_job_finished` **不弹模态框**（弹了界面就会卡住）；
+* 界面拼出的命令行能被**真实 CLI parser 接受**（往返测试）；
+* 写出的 JSON **不含 `NaN`**（那是 Python 扩展，浏览器会拒绝解析）。
+
+Qt 界面测试在没装 PySide6 时**干净跳过**，所以没有 GUI 依赖的环境也能跑全套。
+CI 装的是核心依赖，因此 `gui` 与 `gui_qt` 的测试在那里会 skip；本地装了
+`requirements-gui.txt` 就会全部执行。
 
 ## 主要结果（诚实版）
 

@@ -138,6 +138,36 @@ def resolve_dir(path: str, root: str | None = None) -> str:
 IMPORT_FAILURE_MARKERS = ("No module named ", "ModuleNotFoundError")
 
 
+def running_under_debugger() -> str | None:
+    """Name the debugger that has taken over this process, if there is one.
+
+    This matters more than it looks.  A debugger does not just watch *this*
+    process: VSCode's debugpy patches ``subprocess`` / ``os.exec*`` so that every
+    child the GUI spawns is itself started under ``pydevd``.  Those children
+    resolve ``-m`` through pydevd's bundled ``runpy``, whose
+    ``_get_module_details`` reports a module it cannot find as
+    ``ImportError("No module named X")`` - deliberately *without* a traceback -
+    and the wrapper then exits 0.
+
+    The result is indistinguishable from a broken install: every job fails with
+    a bare ``No module named pdbenergy.cli`` and exit code 0, while the very same
+    interpreter imports the package fine from ``-c`` or from a script.  The fix
+    is not in the project - launch the GUI without the debugger.
+    """
+    if "pydevd" in sys.modules:
+        return "pydevd（VSCode / PyCharm 调试器）"
+    if "debugpy" in sys.modules:
+        return "debugpy"
+    # A debugger can also be present as the subprocess patch alone, without its
+    # main module imported into this process.
+    if any(name.endswith(("pydev_monkey", "pydevd_runpy", "pydevd"))
+           for name in sys.modules):
+        return "python 调试器（pydevd 的子进程补丁已生效）"
+    if any(k.startswith(("PYDEVD_", "DEBUGPY_")) for k in os.environ):
+        return "python 调试器（环境里带着 PYDEVD_* / DEBUGPY_*）"
+    return None
+
+
 class JobManager:
     """Launches CLI subprocesses and streams their output."""
 
@@ -273,8 +303,21 @@ class JobManager:
         """A diagnosis to print instead of a bare ``No module named ...``."""
         pkg = os.path.join(self.project_root, "pdbenergy")
         cli = os.path.join(pkg, "cli.py")
-        lines = [
-            f"[界面] 子进程无法导入 {module}：{reason}",
+        lines = [f"[界面] 子进程无法导入 {module}：{reason}"]
+        debugger = running_under_debugger()
+        if debugger:
+            # Listed first because it is, by a wide margin, the likeliest cause -
+            # and the only one the user can fix in five seconds.
+            lines += [
+                f"[界面] ⚠ 界面正跑在调试器下（{debugger}）。",
+                "[界面]   调试器会把运行时注入界面启动的每一个子进程，"
+                "其中的 `python -m` 会以「No module named ...」静默失败（退出码 0）。",
+                "[界面]   这不是环境坏了：同一个解释器 `-c \"import pdbenergy.cli\"` 是成功的。",
+                r"[界面]   修法：不要用调试方式启动界面。用 scripts\start_gui.cmd、"
+                "终端 `python -m pdbenergy.gui_qt`，"
+                r"或在 .vscode/launch.json 里给该配置加上 \"noDebug\": true。",
+            ]
+        lines += [
             f"[界面]   解释器    : {self.python}"
             f"（存在：{os.path.isfile(self.python)}）",
             f"[界面]   项目根目录: {self.project_root}"
@@ -286,8 +329,9 @@ class JobManager:
             *self.python_env_report(),
             "[界面] 请在终端手跑这条，它和界面走的是同一个解释器：",
             f'[界面]   {self.python} -c "import pdbenergy.cli; print(pdbenergy.cli.__file__)"',
-            "[界面] 若上面成功而界面仍失败：多半是界面进程继承了坏掉的 PYTHONHOME/PYTHONPATH，"
-            "关掉界面、在干净终端里重新启动即可。",
+            "[界面] 若上面成功而界面仍失败：先看上面那条调试器警告，"
+            "否则就是界面进程继承了坏掉的 PYTHONHOME/PYTHONPATH，"
+            "关掉界面、用干净环境重新启动。",
             f"[界面] 若包目录或 cli.py 显示不存在，说明界面用的是另一个副本，"
             f"请在 {self.project_root} 下启动。",
         ]

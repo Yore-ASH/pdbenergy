@@ -170,24 +170,51 @@ python -m pdbenergy.gui --port 9000
 
 ## 排错
 
-### 界面日志里出现 `No module named pdbenergy.cli`
+### 界面日志里出现 `No module named pdbenergy.cli`（任务全部失败，退出码却是 0）
 
-子进程没能导入这个包，**此时任何任务都会立刻失败**——一次都没跑起来。这条报错只会
-给出模块名（`python -m` 报的是点号全名，即使缺的是父包 `pdbenergy` 也一样），所以界面
-会补充解释器、项目根目录、工作目录和一条自检命令，并且**把任务标成 `✗ 任务失败`**。
+**头号原因：界面跑在调试器里（VSCode 的 F5 / 「运行和调试」）。**
 
-最常见的原因是：**界面是在项目改名/移动之后，或者虚拟环境重装之前启动的**，进程里还
-记着旧路径（例如 `...\PyT_PDB_HANDEL`）。处理办法：
+这不是你的环境坏了。VSCode 的 debugpy 不只是观察界面进程，它还会 patch
+`subprocess` / `os.exec*`，把 `pydevd` 注入到**界面启动的每一个子进程**里（可以在
+子进程的 `sys.path[0]` 看到 `...\debugpy\_vendored\pydevd`）。被接管的子进程会用
+pydevd 自带的 `runpy` 去解析 `python -m pdbenergy.cli`，而它把"找不到模块"报成一句
+**没有 traceback 的 `ImportError`**（`pydevd_runpy.py`：`raise error("No module named
+%s")`），包装层随后**以退出码 0 结束**。于是每个任务都"失败但看起来像成功"。
 
-1. 关掉界面，从**当前**项目目录重新启动（每次启动都会在日志顶部打印四行
-   「自检」：解释器 / 项目根目录 / 工作目录 / 数据目录，先核对它们）；
-2. 确认包本身没问题：
-   ```powershell
-   .\.venv\Scripts\python.exe -c "import pdbenergy.cli; print(pdbenergy.cli.__file__)"
-   ```
+判别方法：同一个解释器 `-c` 导入是**成功**的，只有 `-m` 失败：
+
+```powershell
+.\.venv\Scripts\python.exe -c "import pdbenergy.cli; print(pdbenergy.cli.__file__)"   # 成功
+```
+
+**修法：用非调试方式启动界面**，三选一：
+
+```powershell
+.\scripts\start_gui.cmd                  # 双击即可，清干净环境再启动
+.\.venv\Scripts\python.exe -m pdbenergy.gui_qt
+# 或 VSCode：用「运行和调试」里的「桌面界面（PySide6，非调试·推荐）」
+#           （该配置带 "noDebug": true，等价于直接运行，不挂调试器）
+```
+
+界面启动时会**主动检测并警告**这件事；任务失败时日志也会把这条警告排在最前面。
+
+想亲手验证这个机制（不需要 VSCode）：
+
+```powershell
+.\.venv\Scripts\python.exe scripts\reproduce_debugger_failure.py --unpatched   # 正常
+.\.venv\Scripts\python.exe scripts\reproduce_debugger_failure.py              # 应用 debugpy 的补丁 → 子进程被 pydevd 接管
+```
+
+### 其它原因
+
+如果界面日志里的「自检」显示解释器 / 项目根目录 / `cli.py` 有哪一项**不存在**，那才是
+路径问题（项目被改名/移动过，或虚拟环境重装过）。处理办法：
+
+1. 关掉界面，从**当前**项目目录重新启动，先核对日志顶部那几行「自检」；
+2. 确认包本身没问题（上面的 `-c` 那行）；
 3. 若第 2 步失败，重装 editable 安装：
    ```powershell
-   .\.venv\Scripts\python.exe -m pip install -e .
+   .\.venv\Scripts\python.exe -m pip install -e ".[gui]"
    ```
 
 `scripts\diagnose_launch.py` 会用界面**同一条代码路径**启动几个子进程并打印退出码，
@@ -195,22 +222,14 @@ python -m pdbenergy.gui --port 9000
 
 ### 界面里任务一直失败，但终端里同一条命令能跑
 
-先重启界面，看日志最上面几行「自检」：解释器、项目根目录、`cli.py` 是否存在、
-工作目录、数据目录，以及界面看到的 `PYTHON*` 环境变量。**如果这些都对、任务却仍然失败**，
-日志会在失败处附上**子进程自述**——子进程自己的 `sys.path`、`find_spec()` 结果和真正的
-traceback。那份自述就是答案，直接照着看。
+先看日志最上面几行「自检」：解释器、项目根目录、`cli.py` 是否存在、工作目录、数据目录，
+以及界面看到的 `PYTHON*` 环境变量和**调试器警告**。如果这些都对、任务却仍然失败，日志会在
+失败处附上**子进程自述**——子进程自己的 `sys.path`、`find_spec()` 结果和真正的 traceback。
+那份自述就是答案，直接照着看。
 
 界面在启动任务时会把 `PYTHONHOME` / `PYTHONSAFEPATH` / `PYTHONSTARTUP` 这类
 **改变解释器启动方式**的变量从子进程环境里移除（日志会说明移除了哪些）。这类变量常由
-桌面快捷方式或 IDE 悄悄带入，会让 `.venv\Scripts\python.exe` 去用另一个安装的标准库，
-症状就是"路径全对但导入失败"。若怀疑如此，用干净启动器：
-
-```powershell
-.\scripts\start_gui.cmd
-```
-
-反过来说，**界面不是跑通流程的必要条件**：日志里 `$ ` 开头那一行就是完整命令行，复制到
-终端可以直接重跑，这也是排查时最可靠的手段。
+桌面快捷方式或 IDE 悄悄带入，会让 `.venv\Scripts\python.exe` 去用另一个安装的标准库。
 
 ## 迭代训练：加数据，看精度真的提升
 

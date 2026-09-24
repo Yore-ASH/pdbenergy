@@ -107,6 +107,7 @@ from .gui import (                       # 与浏览器版共享的只读自省
     predict_checkpoints,
     project_state,
     resolve_dir,
+    running_under_debugger,
 )
 
 # --------------------------------------------------------------------------- #
@@ -1366,6 +1367,17 @@ class MainWindow(QMainWindow):
         )
         for line in mgr.python_env_report():
             self.log_message(line)
+        debugger = running_under_debugger()
+        if debugger:
+            self.log_message(
+                f"[自检] ⚠ 界面正跑在调试器下（{debugger}）。\n"
+                "[自检]   调试器会把运行时注入界面启动的每一个子进程，"
+                "其中的 `python -m` 会以「No module named ...」静默失败（退出码 0），"
+                "看起来就像环境坏了。\n"
+                "[自检]   请用非调试方式启动：双击 scripts\\start_gui.cmd，"
+                "终端 `python -m pdbenergy.gui_qt`，"
+                "或把 .vscode/launch.json 里该配置的 \"noDebug\" 设为 true。"
+            )
         problem = None
         if not root_ok:
             problem = f"项目根目录不存在：{mgr.project_root}"

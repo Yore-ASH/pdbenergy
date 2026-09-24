@@ -178,6 +178,28 @@ class TestJobManager(unittest.TestCase):
                          "a poisoned parent environment must not reach the child")
         manager.shutdown()
 
+    def test_debugger_is_detected(self):
+        """A debugged GUI hands every child to pydevd, whose runpy reports a
+        missing module as a bare, exit-0 error.  That must be named as such."""
+        from pdbenergy.gui import running_under_debugger
+
+        self.assertIsNone(running_under_debugger(), "the suite runs undebugged")
+        with mock.patch.dict(sys.modules, {"pydevd": mock.MagicMock()}):
+            self.assertIn("pydevd", running_under_debugger())
+        with mock.patch.dict(os.environ, {"PYDEVD_DEBUG": "1"}, clear=False):
+            self.assertIsNotNone(running_under_debugger())
+
+    def test_hint_blames_the_debugger_first_when_there_is_one(self):
+        manager = JobManager(self.dir)
+        with mock.patch.dict(sys.modules, {"pydevd": mock.MagicMock()}):
+            text = manager.import_hint("pdbenergy.cli",
+                                       "No module named pdbenergy.cli")
+        self.assertIn("调试器", text)
+        self.assertIn("noDebug", text)
+        self.assertIn("start_gui.cmd", text)
+        # The generic paths-and-environment dump is still there, below it.
+        self.assertIn("项目根目录", text)
+
     @staticmethod
     def _wait_for(manager, job_id, timeout=60.0):
         deadline = time.time() + timeout

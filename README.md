@@ -118,6 +118,8 @@ pdbenergy gui                    # PySide6 桌面窗口（推荐）
 pdbenergy-gui                    # 同上，独立命令
 python -m pdbenergy.gui_qt       # 同上，模块方式
 
+.\scripts\start_gui.cmd          # 干净环境启动（清掉继承来的 PYTHON* 变量）
+
 python pdbenergy\gui_qt.py       # 也可以直接运行文件（IDE 的 Run 按钮、双击）
 python pdbenergy\cli.py inventory  # cli / iterate / gui / web 都支持直接运行
 
@@ -190,6 +192,25 @@ python -m pdbenergy.gui --port 9000
 
 `scripts\diagnose_launch.py` 会用界面**同一条代码路径**启动几个子进程并打印退出码，
 用来区分"环境坏了"和"命令写错了"。
+
+### 界面里任务一直失败，但终端里同一条命令能跑
+
+先重启界面，看日志最上面几行「自检」：解释器、项目根目录、`cli.py` 是否存在、
+工作目录、数据目录，以及界面看到的 `PYTHON*` 环境变量。**如果这些都对、任务却仍然失败**，
+日志会在失败处附上**子进程自述**——子进程自己的 `sys.path`、`find_spec()` 结果和真正的
+traceback。那份自述就是答案，直接照着看。
+
+界面在启动任务时会把 `PYTHONHOME` / `PYTHONSAFEPATH` / `PYTHONSTARTUP` 这类
+**改变解释器启动方式**的变量从子进程环境里移除（日志会说明移除了哪些）。这类变量常由
+桌面快捷方式或 IDE 悄悄带入，会让 `.venv\Scripts\python.exe` 去用另一个安装的标准库，
+症状就是"路径全对但导入失败"。若怀疑如此，用干净启动器：
+
+```powershell
+.\scripts\start_gui.cmd
+```
+
+反过来说，**界面不是跑通流程的必要条件**：日志里 `$ ` 开头那一行就是完整命令行，复制到
+终端可以直接重跑，这也是排查时最可靠的手段。
 
 ## 迭代训练：加数据，看精度真的提升
 

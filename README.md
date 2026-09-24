@@ -111,11 +111,21 @@ for pred in predictor.predict_file("my_structure.pdb"):
 ```powershell
 pdbenergy gui                    # PySide6 桌面窗口（推荐）
 pdbenergy-gui                    # 同上，独立命令
-python -m pdbenergy.gui_qt
+python -m pdbenergy.gui_qt       # 同上，模块方式
+
+python pdbenergy\gui_qt.py       # 也可以直接运行文件（IDE 的 Run 按钮、双击）
+python pdbenergy\cli.py inventory  # cli / iterate / gui / web 都支持直接运行
 
 pdbenergy web                    # 浏览器版，不需要 PySide6
 python -m pdbenergy.gui --port 9000
 ```
+
+> **直接运行文件为什么也能用**：相对导入（`from .actions import ...`）需要父包，
+> 直接当脚本跑时没有，会报 `ImportError: attempted relative import with no known
+> parent package`。所以 `cli.py` / `iterate.py` / `gui.py` / `gui_qt.py` 顶部都有一段
+> 引导块：发现 `__package__` 为空时，先把项目根目录加进 `sys.path`，
+> 再把自己当包模块重新派发一次。两种方式由
+> `tests/test_entrypoints.py` 用子进程实测覆盖（含"从别的目录用绝对路径运行"）。
 
 安装桌面版：
 

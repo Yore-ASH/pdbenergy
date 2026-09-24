@@ -16,6 +16,19 @@ re-run safely: nothing is recomputed unless asked.
 
 from __future__ import annotations
 
+# --- 允许直接运行本文件：IDE 的 Run 按钮 / 双击 / python pdbenergy\cli.py ----- #
+# 相对导入需要一个父包，直接跑文件没有，会报
+#     ImportError: attempted relative import with no known parent package
+# 所以先把自己当作包模块重新派发一次。必须在任何相对导入之前。
+if __package__ in (None, ""):                                    # pragma: no cover
+    import os as _os
+    import sys as _sys
+
+    _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+    from pdbenergy.cli import main as _main
+
+    _sys.exit(_main())
+
 import argparse
 import json
 import os

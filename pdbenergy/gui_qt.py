@@ -29,6 +29,21 @@
 
 from __future__ import annotations
 
+# --- 允许直接运行本文件：IDE 的 Run 按钮 / 双击 / python pdbenergy\gui_qt.py --- #
+# 相对导入需要一个父包。`python -m pdbenergy.gui_qt` 有父包，直接跑文件没有，
+# 于是停在第一条 `from .x import y` 上并报：
+#     ImportError: attempted relative import with no known parent package
+# 所以这种情况先把项目根目录放进 sys.path，再把自己当作包模块重新派发一次。
+# 这一段必须在任何相对导入之前。
+if __package__ in (None, ""):                                    # pragma: no cover
+    import os as _os
+    import sys as _sys
+
+    _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+    from pdbenergy.gui_qt import main as _main
+
+    _sys.exit(_main())
+
 import os
 import sys
 from dataclasses import dataclass

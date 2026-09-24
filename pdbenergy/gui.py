@@ -711,85 +711,127 @@ INDEX_HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>pdbenergy — 训练 / 预测 / 测试</title>
+<title>PDBEnergy — 训练 / 预测 / 测试</title>
 <style>
 :root{
   --bg:#0f1419; --panel:#161c24; --panel2:#1d242e; --line:#2a3441;
   --fg:#dde3ea; --dim:#8b98a8; --accent:#4da3ff; --ok:#3fb950; --warn:#d29922;
-  --bad:#f85149; --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --bad:#f85149;
+  /* 全站字体统一为 Times New Roman；中文回退到宋体（与 Times 同属衬线体） */
+  --font:"Times New Roman", Times, "SimSun", "宋体", "Songti SC", serif;
+  --mono:var(--font);
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);
-  font:14px/1.55 system-ui,"Segoe UI","Microsoft YaHei",sans-serif}
+  font:15px/1.6 var(--font)}
 header{display:flex;align-items:center;gap:16px;padding:10px 18px;
   background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
-header h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.3px}
+header h1{font-size:22px;margin:0;font-weight:700;letter-spacing:.5px;
+  font-family:var(--font)}
 header .spacer{flex:1}
-.pill{font:12px/1 var(--mono);padding:5px 9px;border-radius:999px;
+.pill{font:13px/1 var(--font);padding:5px 9px;border-radius:999px;
   background:var(--panel2);border:1px solid var(--line);color:var(--dim)}
-.pill b{color:var(--fg);font-weight:600}
-main{display:grid;grid-template-columns:230px 1fr;min-height:calc(100vh - 48px)}
+.pill b{color:var(--fg);font-weight:700}
+main{display:grid;grid-template-columns:250px 1fr;min-height:calc(100vh - 52px)}
 nav{padding:14px 10px;border-right:1px solid var(--line);background:var(--panel)}
 nav button{display:block;width:100%;text-align:left;margin-bottom:4px;padding:9px 12px;
   background:transparent;border:1px solid transparent;border-radius:7px;color:var(--dim);
-  font:14px system-ui;cursor:pointer}
+  font:15px var(--font);cursor:pointer}
 nav button:hover{background:var(--panel2);color:var(--fg)}
 nav button.on{background:var(--panel2);border-color:var(--accent);color:var(--fg)}
 section{padding:18px 22px;display:none}
 section.on{display:block}
-h2{font-size:16px;margin:0 0 4px;font-weight:600}
-h3{font-size:13px;margin:20px 0 8px;color:var(--dim);font-weight:600;
-  text-transform:uppercase;letter-spacing:.6px}
-p.hint{color:var(--dim);font-size:12.5px;margin:2px 0 14px;max-width:80ch}
+h2{font-size:19px;margin:0 0 4px;font-weight:700}
+h3{font-size:15px;margin:22px 0 8px;color:var(--dim);font-weight:700;
+  letter-spacing:.4px}
+p.hint{color:var(--dim);font-size:13.5px;margin:2px 0 14px;max-width:88ch}
+code{font-family:var(--font);background:#0a0e12;border:1px solid var(--line);
+  border-radius:4px;padding:0 4px;font-size:13px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:9px;
   padding:14px 16px;margin-bottom:14px}
-.grid{display:grid;gap:10px 14px;grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
-label{display:block;font-size:12px;color:var(--dim);margin-bottom:4px}
+.grid{display:grid;gap:10px 14px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+label{display:block;font-size:13.5px;color:var(--dim);margin-bottom:4px}
 input,select{width:100%;padding:7px 9px;background:var(--bg);color:var(--fg);
-  border:1px solid var(--line);border-radius:6px;font:13px var(--mono)}
+  border:1px solid var(--line);border-radius:6px;font:14px var(--font)}
 input[type=checkbox]{width:auto}
 button.act{padding:8px 15px;border-radius:7px;border:1px solid var(--accent);
-  background:#153055;color:#cfe6ff;font:13px system-ui;cursor:pointer}
+  background:#153055;color:#cfe6ff;font:14px var(--font);cursor:pointer}
 button.act:hover{background:#1b3d69}
 button.act.ghost{border-color:var(--line);background:var(--panel2);color:var(--fg)}
 button.act.danger{border-color:var(--bad);background:#3a1a1a;color:#ffd7d5}
 button.act:disabled{opacity:.45;cursor:not-allowed}
 .row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
-table{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
+table{width:100%;border-collapse:collapse;font:13.5px var(--font)}
 th,td{text-align:right;padding:5px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
 th:first-child,td:first-child{text-align:left}
-th{color:var(--dim);font-weight:600;position:sticky;top:0;background:var(--panel)}
+th{color:var(--dim);font-weight:700;position:sticky;top:0;background:var(--panel)}
 tbody tr:hover{background:var(--panel2)}
 .scroll{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:7px}
-#log{font:12px/1.5 var(--mono);background:#0a0e12;border:1px solid var(--line);
+#log{font:13px/1.5 var(--font);background:#0a0e12;border:1px solid var(--line);
   border-radius:7px;padding:10px;height:230px;overflow:auto;white-space:pre-wrap;
   word-break:break-word}
 #logwrap{padding:0 22px 20px}
-.badge{display:inline-block;padding:2px 7px;border-radius:5px;font-size:11px;
-  font-family:var(--mono)}
+.badge{display:inline-block;padding:2px 7px;border-radius:5px;font-size:12px;
+  font-family:var(--font)}
 .b-ok{background:#12351c;color:var(--ok)} .b-bad{background:#3a1a1a;color:var(--bad)}
 .b-run{background:#153055;color:var(--accent)} .b-idle{background:var(--panel2);color:var(--dim)}
 .figs{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(330px,1fr))}
 .figs figure{margin:0;background:var(--panel2);border:1px solid var(--line);
   border-radius:7px;padding:8px}
 .figs img{width:100%;border-radius:5px;background:#fff}
-.figs figcaption{font:11px var(--mono);color:var(--dim);margin-top:6px;text-align:center}
-.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font:12.5px var(--mono)}
+.figs figcaption{font:12px var(--font);color:var(--dim);margin-top:6px;text-align:center}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font:13.5px var(--font)}
 .kv div:nth-child(odd){color:var(--dim)}
 .warn{color:var(--warn)} .bad{color:var(--bad)} .ok{color:var(--ok)}
+
+/* ---- 名词注解：悬停显示解释 ---- */
+[data-tip]{border-bottom:1px dotted var(--accent);cursor:help;position:relative}
+[data-tip]:hover::after{
+  content:attr(data-tip);
+  position:absolute;left:0;top:135%;z-index:80;
+  min-width:240px;max-width:min(420px,72vw);
+  background:#070a0d;color:var(--fg);border:1px solid var(--accent);
+  border-radius:7px;padding:8px 11px;font-size:13.5px;line-height:1.6;
+  white-space:normal;text-align:left;font-weight:400;
+  box-shadow:0 8px 26px rgba(0,0,0,.65);pointer-events:none;
+}
+th[data-tip]:hover::after{position:fixed}
+
+/* ---- 帮助页 ---- */
+details{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  margin-bottom:8px;padding:0}
+details[open]{border-color:var(--accent)}
+summary{cursor:pointer;padding:11px 14px;font-size:15px;font-weight:700;
+  list-style:none;display:flex;gap:8px;align-items:baseline}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"＋";color:var(--accent);font-weight:700}
+details[open] summary::before{content:"－"}
+summary:hover{color:var(--accent)}
+details .body{padding:0 16px 14px 34px;color:var(--fg);
+  border-top:1px solid var(--line);margin-top:0;padding-top:12px}
+details .body p{margin:0 0 9px}
+details .body ul{margin:0 0 9px;padding-left:20px}
+details .body li{margin-bottom:5px}
+details .body table{margin:8px 0;font-size:13px}
+details .body th{position:static;background:transparent}
+.gloss{display:grid;gap:6px 18px;grid-template-columns:auto 1fr;font-size:13.5px}
+.gloss dt{color:var(--accent);font-weight:700;white-space:nowrap}
+.gloss dd{margin:0 0 6px}
 </style>
 </head>
 <body>
 <header>
-  <h1>pdbenergy</h1>
-  <span class="pill">raw <b id="s-raw">–</b></span>
-  <span class="pill">labelled <b id="s-lab">–</b></span>
-  <span class="pill">pending <b id="s-pend">–</b></span>
-  <span class="pill">inventory <b id="s-inv">–</b></span>
+  <h1>PDBEnergy</h1>
+  <span class="pill" data-tip="data/raw 目录里的 PDB 结构文件数量">原始结构 <b id="s-raw">–</b></span>
+  <span class="pill" data-tip="已经用力场算好能量的构象系综数量（data/interim/*.npz）">已标注 <b id="s-lab">–</b></span>
+  <span class="pill" data-tip="原始结构数 − 已标注数，即还需处理的条目">待标注 <b id="s-pend">–</b></span>
+  <span class="pill" data-tip="体检结果：扫描了多少条目、其中多少值得打标签">体检 <b id="s-inv">–</b></span>
   <span class="spacer"></span>
-  <span class="pill" id="s-job">idle</span>
-  <button class="act ghost" id="btn-cancel" disabled>取消</button>
-  <button class="act ghost" onclick="refresh()">刷新</button>
+  <span class="pill" id="s-job">空闲</span>
+  <button class="act ghost" id="btn-cancel" disabled
+          data-tip="终止当前任务。任务跑在子进程里，取消是真的结束进程">取消任务</button>
+  <button class="act ghost" onclick="refresh()"
+          data-tip="重新读取项目状态（每 15 秒也会自动刷新一次）">刷新</button>
 </header>
 <main>
 <nav>
@@ -799,11 +841,12 @@ tbody tr:hover{background:var(--panel2)}
   <button data-tab="eval">评估 / 测试</button>
   <button data-tab="predict">预测</button>
   <button data-tab="iterate">迭代训练</button>
+  <button data-tab="help">帮助 / 常见问题</button>
 </nav>
 <div>
   <section id="tab-overview" class="on">
     <h2>概览</h2>
-    <p class="hint">项目当前状态。所有面板共享底部同一个实时日志。</p>
+    <p class="hint">项目当前状态。所有面板共享底部同一个<span data-tip="当前任务的实时标准输出。界面显示的命令行可以直接复制到终端重跑">实时日志</span>。</p>
     <div class="card"><div class="kv" id="ov-kv"></div></div>
     <h3>已有运行</h3>
     <div class="scroll"><table id="ov-runs"></table></div>
@@ -811,32 +854,43 @@ tbody tr:hover{background:var(--panel2)}
 
   <section id="tab-data">
     <h2>数据 / 打标签</h2>
-    <p class="hint">扫描会解析 data/raw 里每个文件（几千个文件要几分钟），过滤掉非蛋白、
-      过短和过长的条目。扫描结果决定哪些条目值得花 OpenMM 时间。打标签是最慢的一步，
-      实测每个蛋白 2–4 分钟；已完成的会跳过，可以分批做。</p>
+    <p class="hint"><b>扫描</b>会解析 data/raw 里每个文件（几千个文件要几分钟），
+      过滤掉非蛋白、过短和过长的条目，并告诉你哪些值得花 OpenMM 时间。
+      <b>打标签</b>是最慢的一步，实测每个蛋白 2–4 分钟；已完成的会跳过，可以分批做。</p>
     <div class="card">
       <div class="grid">
-        <div><label>max_residues</label><input id="d-max" type="number" value="120"></div>
-        <div><label>min_residues</label><input id="d-min" type="number" value="10"></div>
-        <div><label>OpenMM threads</label><input id="d-threads" type="number" value="8"></div>
-        <div><label>并行 workers</label><input id="d-workers" type="number" value="1"></div>
+        <div><label><span data-tip="只处理不超过这个残基数的条目。大蛋白的构建代价超线性增长（9000 残基的条目会让 OpenMM 几乎跑不完）">最大残基数</span>
+          <code>max_residues</code></label><input id="d-max" type="number" value="120"></div>
+        <div><label><span data-tip="过滤掉单残基、二肽这类没有构象能可学的小碎片">最小残基数</span>
+          <code>min_residues</code></label><input id="d-min" type="number" value="10"></div>
+        <div><label><span data-tip="OpenMM 内部使用的并行线程数。实测 8 线程比 1 线程快约 3.5–4 倍">OpenMM 线程数</span></label>
+          <input id="d-threads" type="number" value="8"></div>
+        <div><label><span data-tip="同时处理多少个蛋白（多进程）。workers × threads 不要超过物理核数，否则互相抢核反而更慢">并行进程数</span>
+          <code>workers</code></label><input id="d-workers" type="number" value="1"></div>
       </div>
       <div class="row" style="margin-top:12px">
-        <button class="act" onclick="post('scan',{max_residues:+d('d-max'),min_residues:+d('d-min')})">扫描 data/raw</button>
-        <button class="act" onclick="loadPending()">列出待标注</button>
-        <button class="act ghost" onclick="post('download',{})">下载内置条目</button>
-        <button class="act ghost" onclick="post('dataset',{})">构建数据集切分</button>
-        <button class="act ghost" onclick="post('estimate_workload',{})">工作量估算</button>
+        <button class="act" data-tip="解析 data/raw 全部文件并生成体检报告，结果决定后续能标注哪些条目"
+                onclick="post('scan',{max_residues:+d('d-max'),min_residues:+d('d-min')})">扫描 data/raw</button>
+        <button class="act" data-tip="按当前的残基上下限，列出还没标注、且值得标注的条目"
+                onclick="loadPending()">列出待标注</button>
+        <button class="act ghost" data-tip="从 RCSB 下载内置的那批小蛋白条目（需要联网）"
+                onclick="post('download',{})">下载内置条目</button>
+        <button class="act ghost" data-tip="按蛋白质切分训练/验证/测试集，并计算目标的均值与标准差"
+                onclick="post('dataset',{})">构建数据集切分</button>
+        <button class="act ghost" data-tip="由体检报告推算：不同残基上限下要标多少条、多少构象、多少磁盘、多长时间"
+                onclick="post('estimate_workload',{})">工作量估算</button>
       </div>
       <p class="hint" style="margin:12px 0 0">提示：workers × threads 不要超过物理核数
-        （4 核用 <code>4 × 2</code>）。</p>
+        （4 核 8 线程的机器建议 <code>4 × 2</code>）。</p>
     </div>
     <h3>条目 <span id="d-count" class="badge b-idle">未加载</span></h3>
     <div class="row" style="margin-bottom:8px">
       <button class="act ghost" onclick="selectAll(true)">全选</button>
       <button class="act ghost" onclick="selectAll(false)">清空</button>
-      <input id="d-limit" type="number" value="50" style="width:90px">
-      <button class="act" onclick="labelling()">标注已勾选</button>
+      <input id="d-limit" type="number" value="50" style="width:90px"
+             data-tip="本次最多标注多少条。剩余的下次继续，已完成的会自动跳过">
+      <button class="act" data-tip="对勾选的条目启动力场打标签（会跑 OpenMM，耗时最长）"
+              onclick="labelling()">标注已勾选</button>
     </div>
     <div class="scroll"><table id="d-table"></table></div>
   </section>
@@ -844,33 +898,47 @@ tbody tr:hover{background:var(--panel2)}
   <section id="tab-train">
     <h2>训练</h2>
     <p class="hint">超参改动会写进命令行并显示在日志里，所以每次运行都可手工复现。
-      改 <code>hidden/cutoff/n_rbf</code> 会使图缓存失效并改变权重形状——那种情况下不能热启动。</p>
+      改 <code>hidden_dim</code>/<code>cutoff</code>/<code>n_rbf</code>
+      会使<span data-tip="把「结构→图」的结果缓存下来复用。约 0.5 MB/构象，2 万构象约 10 GB">图缓存</span>失效并改变权重形状——那种情况下不能热启动。</p>
     <div class="card">
       <div class="grid">
-        <div><label>model</label><select id="t-model">
-          <option value="schnet">schnet (图神经网络)</option>
-          <option value="mlp">mlp (描述符基线)</option></select></div>
-        <div><label>epochs（本次）</label><input id="t-epochs" type="number" value="25"></div>
-        <div><label>batch_size</label><input id="t-batch" type="number" value="16"></div>
-        <div><label>learning_rate</label><input id="t-lr" type="number" step="0.0001" value="0.0005"></div>
-        <div><label>hidden_dim</label><input id="t-hidden" type="number" value="64"></div>
-        <div><label>n_interactions</label><input id="t-int" type="number" value="3"></div>
-        <div><label>split_mode</label><select id="t-split">
-          <option value="protein">protein（正确）</option>
-          <option value="frame">frame（泄漏，仅用于对照）</option></select></div>
-        <div><label>tag（输出目录名）</label><input id="t-tag" value="schnet_protein"></div>
+        <div><label><span data-tip="SchNet：消息传递图神经网络，直接吃 3D 结构。MLP：手工描述符基线，用 Rg、接触数等 24 维全局量">模型</span></label>
+          <select id="t-model">
+          <option value="schnet">SchNet（图神经网络）</option>
+          <option value="mlp">MLP（手工描述符基线）</option></select></div>
+        <div><label><span data-tip="本次训练把训练集完整过几遍。配置里的 epochs 永远是「这次再跑多少轮」，续训时不会重复已跑的轮次">训练轮数</span>
+          <code>epochs</code></label><input id="t-epochs" type="number" value="25"></div>
+        <div><label><span data-tip="一次梯度更新用多少个构象。大 batch 的矩阵运算效率更高（实测每样本耗时从 2.13 s 降到 1.36 s），但更占内存">批大小</span>
+          <code>batch_size</code></label><input id="t-batch" type="number" value="16"></div>
+        <div><label><span data-tip="AdamW 的步长。太大不收敛，太小训练慢">学习率</span>
+          <code>learning_rate</code></label><input id="t-lr" type="number" step="0.0001" value="0.0005"></div>
+        <div><label><span data-tip="每个原子的特征向量维度。越大容量越强、越慢，也越容易在小数据集上过拟合">隐藏维度</span>
+          <code>hidden_dim</code></label><input id="t-hidden" type="number" value="64"></div>
+        <div><label><span data-tip="消息传递层数。一个原子能「看」到约 层数 × cutoff 的范围（本项目 3 × 4 Å = 12 Å）">交互层数</span>
+          <code>n_interactions</code></label><input id="t-int" type="number" value="3"></div>
+        <div><label><span data-tip="按蛋白质切分：测试集蛋白训练中从未出现，是唯一诚实的做法。按帧切分：同一蛋白的近似重复构象会同时出现在训练和测试里，指标会被严重高估">数据切分方式</span></label>
+          <select id="t-split">
+          <option value="protein">按蛋白质（正确）</option>
+          <option value="frame">按帧（数据泄漏，仅用于对照）</option></select></div>
+        <div><label><span data-tip="输出目录名，结果写到 outputs/&lt;tag&gt;/">输出目录名</span>
+          <code>tag</code></label><input id="t-tag" value="schnet_protein"></div>
       </div>
       <div class="row" style="margin-top:12px">
-        <label style="margin:0"><input type="checkbox" id="t-nocache"> 禁用图缓存（大数据集）</label>
-        <label style="margin:0"><input type="checkbox" id="t-recompute"> 重算归一化</label>
+        <label style="margin:0"><input type="checkbox" id="t-nocache">
+          <span data-tip="不把图缓存进内存，改成每次现场构造。数据集超过约 2 万构象时必须打开（缓存会 OOM）">禁用图缓存</span></label>
+        <label style="margin:0"><input type="checkbox" id="t-recompute">
+          <span data-tip="热启动/续训时默认沿用检查点里的目标均值与标准差。如果新蛋白的分布确实不同，才需要重算">重算归一化</span></label>
       </div>
       <div class="grid" style="margin-top:12px">
-        <div><label>热启动 --init-from（数据变多时用）</label><input id="t-init" placeholder="outputs/.../checkpoint.pt"></div>
-        <div><label>续训 --resume（中断后接着跑）</label><input id="t-resume" placeholder="outputs/某run目录"></div>
+        <div><label><span data-tip="用旧模型的权重初始化，但优化器、轮次计数、历史全部重来。数据变多时用这个">&nbsp;热启动</span>
+          <code>--init-from</code></label><input id="t-init" placeholder="outputs/.../checkpoint.pt"></div>
+        <div><label><span data-tip="连 AdamW 的两个动量和轮次计数一起恢复，接着往下跑。长时间训练被中断后用它">&nbsp;续训</span>
+          <code>--resume</code></label><input id="t-resume" placeholder="outputs/某个运行目录"></div>
       </div>
       <div class="row" style="margin-top:12px">
-        <button class="act" onclick="train()">开始训练</button>
-        <span class="hint" style="margin:0">两者只能填一个</span>
+        <button class="act" data-tip="启动训练。任务在子进程里跑，界面不会卡，日志实时回传"
+                onclick="train()">开始训练</button>
+        <span class="hint" style="margin:0">热启动与续训两者只能填一个</span>
       </div>
     </div>
     <div id="t-recent"></div>
@@ -879,15 +947,20 @@ tbody tr:hover{background:var(--panel2)}
   <section id="tab-eval">
     <h2>评估 / 测试</h2>
     <p class="hint">选一个运行做评估并看图。注意：<b>MAE 单独看会骗人</b>——
-      务必同时看「预测跨度」和「组内 ρ」。预测跨度只有百分之几，说明模型基本在输出常数。</p>
+      务必同时看<span data-tip="(预测最大值−最小值)/(真实最大值−最小值)。只有百分之几，说明模型基本在输出一个常数">&nbsp;预测跨度</span>和
+      <span data-tip="同一个蛋白内部的排序相关性。这才是打分函数真正需要的指标">&nbsp;组内 ρ</span>。</p>
     <div class="card">
       <div class="grid">
-        <div><label>运行</label><select id="e-run"></select></div>
-        <div><label>消融 epochs</label><input id="e-epochs" type="number" value="20"></div>
+        <div><label><span data-tip="outputs/ 下每个含 checkpoint.pt 的目录">运行</span></label>
+          <select id="e-run"></select></div>
+        <div><label><span data-tip="数据泄漏消融实验的训练轮数">消融轮数</span></label>
+          <input id="e-epochs" type="number" value="20"></div>
       </div>
       <div class="row" style="margin-top:12px">
-        <button class="act" onclick="evaluate()">评估该运行</button>
-        <button class="act ghost" onclick="post('ablate',{epochs:+d('e-epochs'),model:'mlp'})">数据泄漏消融</button>
+        <button class="act" data-tip="在验证集和测试集上算指标，并生成 parity、残差、学习曲线等图"
+                onclick="evaluate()">评估该运行</button>
+        <button class="act ghost" data-tip="用同样配置只改切分方式训练两次，量化「按帧切分」能把指标虚高多少"
+                onclick="post('ablate',{epochs:+d('e-epochs'),model:'mlp'})">数据泄漏消融</button>
       </div>
     </div>
     <div class="card" id="e-metrics"></div>
@@ -896,23 +969,28 @@ tbody tr:hover{background:var(--panel2)}
 
   <section id="tab-predict">
     <h2>预测</h2>
-    <p class="hint">给 PDB 文件打分并排序。预测输出的是相对构象能 ΔE =
-      E − min(E)，只在同一分子内部可比。<code>verify</code> 会额外算一次真值力场能量，
-      可以直接看到误差（需要 OpenMM，慢一些）。</p>
+    <p class="hint">给 PDB 文件打分并排序。输出的是<span data-tip="ΔE = E − min(E)，相对该蛋白自身最低构象能的差值。只在同一分子内部可比，跨分子无意义">&nbsp;相对构象能 ΔE</span>。
+      <code>--verify</code> 会额外用 OpenMM 算一次真值能量，可以直接看到误差（慢一些）。</p>
     <div class="card">
       <div class="grid">
-        <div><label>checkpoint</label><select id="p-ckpt"></select></div>
-        <div><label>每个文件取前 N 个模型</label><input id="p-models" type="number" value="1"></div>
-        <div><label>OpenMM threads（verify 用）</label><input id="p-threads" type="number" value="4"></div>
-        <div><label>或手填路径（逗号分隔）</label><input id="p-paths" placeholder="data/raw/1L2Y.pdb"></div>
+        <div><label><span data-tip="模型检查点：权重 + 模型/特征配置 + 归一化统计量。单个文件就足以做推理">检查点</span>
+          <code>checkpoint</code></label><select id="p-ckpt"></select></div>
+        <div><label><span data-tip="NMR 条目一个文件里有几十个模型，这里限制每个文件取前几个">每个文件取前 N 个模型</span></label>
+          <input id="p-models" type="number" value="1"></div>
+        <div><label><span data-tip="verify 时 OpenMM 使用的线程数">OpenMM 线程数</span></label>
+          <input id="p-threads" type="number" value="4"></div>
+        <div><label><span data-tip="也可以直接手填路径，多个用英文逗号分隔">或手填文件路径</span></label>
+          <input id="p-paths" placeholder="data/raw/1L2Y.pdb"></div>
       </div>
       <div class="row" style="margin-top:12px">
-        <label style="margin:0"><input type="checkbox" id="p-verify"> --verify 对照真值</label>
-        <button class="act" onclick="predict()">预测</button>
+        <label style="margin:0"><input type="checkbox" id="p-verify">
+          <span data-tip="额外用物理力场算一次真值能量并显示误差。这是检验模型是否可用的唯一诚实方式">&nbsp;对照真值（--verify）</span></label>
+        <button class="act" data-tip="对选中的 PDB 文件逐个预测并按预测能量排序" onclick="predict()">开始预测</button>
         <button class="act ghost" onclick="loadPredictions()">读取上次结果</button>
       </div>
       <div class="grid" style="margin-top:12px">
-        <div><label>从 data/raw 选择文件</label><select id="p-file" size="6" multiple></select></div>
+        <div><label>从 data/raw 选择文件（可多选）</label>
+          <select id="p-file" size="6" multiple></select></div>
       </div>
     </div>
     <div class="scroll"><table id="p-table"></table></div>
@@ -921,27 +999,251 @@ tbody tr:hover{background:var(--panel2)}
   <section id="tab-iterate">
     <h2>迭代训练</h2>
     <p class="hint">每轮：标注新条目 → 重建数据集 → 从上一轮热启动 → 评估 → 记录。
-      切分在第 1 轮冻结，之后新增的蛋白只进 train，所以跨轮指标可比。
-      <code>build-limit</code> 用来分批，避免一轮就把几百条全标了。</p>
+      <span data-tip="第 1 轮把 train/val/test 的蛋白固定下来写进 split.json，之后新增的蛋白只进 train。否则测试集每轮都在变，「指标变好」可能只是难蛋白被换出去了">&nbsp;切分在第 1 轮冻结</span>，
+      所以跨轮指标可比。<code>build-limit</code> 用来分批，避免一轮就把几百条全标了。</p>
     <div class="card">
       <div class="grid">
-        <div><label>rounds</label><input id="i-rounds" type="number" value="1"></div>
-        <div><label>本轮最多标注 N 条（0=全部）</label><input id="i-limit" type="number" value="20"></div>
-        <div><label>max_residues</label><input id="i-max" type="number" value="200"></div>
-        <div><label>epochs / 轮</label><input id="i-epochs" type="number" value="20"></div>
-        <div><label>model</label><select id="i-model">
-          <option value="schnet">schnet</option><option value="mlp">mlp</option></select></div>
-        <div><label>threads</label><input id="i-threads" type="number" value="8"></div>
-        <div><label>workers</label><input id="i-workers" type="number" value="1"></div>
+        <div><label><span data-tip="跑几轮「加数据→重训→评估→记录」">轮数</span>
+          <code>rounds</code></label><input id="i-rounds" type="number" value="1"></div>
+        <div><label><span data-tip="本轮最多标注多少条新条目。填 0 表示全部（几百条会跑几十小时）">本轮最多标注 N 条</span></label>
+          <input id="i-limit" type="number" value="20"></div>
+        <div><label><span data-tip="本轮允许标注的条目残基上限">最大残基数</span>
+          <code>max_residues</code></label><input id="i-max" type="number" value="200"></div>
+        <div><label>每轮训练轮数</label><input id="i-epochs" type="number" value="20"></div>
+        <div><label>模型</label><select id="i-model">
+          <option value="schnet">SchNet</option><option value="mlp">MLP</option></select></div>
+        <div><label>OpenMM 线程数</label><input id="i-threads" type="number" value="8"></div>
+        <div><label>并行进程数</label><input id="i-workers" type="number" value="1"></div>
       </div>
       <div class="row" style="margin-top:12px">
-        <label style="margin:0"><input type="checkbox" id="i-build" checked> 标注新条目</label>
-        <label style="margin:0"><input type="checkbox" id="i-warm" checked> 热启动</label>
-        <button class="act" onclick="iterate()">运行迭代</button>
+        <label style="margin:0"><input type="checkbox" id="i-build" checked>
+          <span data-tip="自动发现 data/raw 里还没标注的条目并打标签">&nbsp;标注新条目</span></label>
+        <label style="margin:0"><input type="checkbox" id="i-warm" checked>
+          <span data-tip="每轮从上一轮检查点热启动。关掉就是每轮从零训，可作为对照">&nbsp;热启动</span></label>
+        <button class="act" data-tip="启动多轮迭代训练" onclick="iterate()">运行迭代</button>
         <button class="act ghost" onclick="loadRounds()">读取轮次表</button>
       </div>
     </div>
     <div id="i-table"></div>
+  </section>
+
+  <section id="tab-help">
+    <h2>帮助 / 常见问题</h2>
+    <p class="hint">这里回答使用中最常遇到的疑问，以及这个项目<b>真实的能力边界</b>——
+      有些问题的答案是「现在还做不到」，那也如实写在这里。</p>
+
+    <h3>一、这个项目在做什么</h3>
+    <details open><summary>这个模型到底预测什么？</summary><div class="body">
+      <p>输入一个蛋白质构象（PDB 坐标 + 元素类型），输出它的<b>相对构象能</b>
+        ΔE = E − min(E)，单位 kcal/mol。</p>
+      <p>「相对」很关键：绝对能量主要由原子组成和长程溶剂化决定，换一个蛋白就完全不可比；
+        真正有意义的是「这个构象比该蛋白自己最舒服的构象差多少」。</p>
+      <p>标签（真值）不是实验数据，而是 <b>AMBER14 + GBn2 隐式溶剂</b>力场算出来的能量。
+        所以模型学到的上限就是力场的上限——它是一台力场的快速代理，不是新的物理。</p>
+    </div></details>
+
+    <details><summary>训练好的模型，现在能当打分函数用吗？</summary><div class="body">
+      <p><b>还不能。</b>在 14 个蛋白、730 个构象上实测：</p>
+      <ul>
+        <li>测试 MAE 121 kcal/mol，而「永远输出平均值」的常数基线是 107 kcal/mol——
+          模型还不如常数预测器；</li>
+        <li>预测跨度只有真实能量范围的 <b>2%</b>，说明它基本在输出一个常数；</li>
+        <li>组内排序相关性 ρ 只有 0.17，也就是在同一蛋白内部不会排序。</li>
+      </ul>
+      <p>它确实带一点真实信号（全局 Spearman 0.43，在真实 NMR 条目上偶尔能排出正确顺序），
+        但不足以用来挑构象。请把它当作<b>一条跑通的流水线</b>，而不是一个可用的工具。</p>
+    </div></details>
+
+    <h3>二、指标怎么读（最容易骗自己的部分）</h3>
+    <details><summary>为什么说「MAE 单独看会骗人」？</summary><div class="body">
+      <p>因为一个几乎只输出常数的模型，只要那个常数稍微好一点，MAE 就能「赢过常数基线」。
+        本项目真实发生过：把径向基加密后，val MAE 从 129.5 降到 114.3（首次超过常数基线
+        118.3），但 <b>Spearman 从 0.430 掉到 −0.036</b>，预测跨度仍只有 2%。</p>
+      <p>它是靠「把预测压得更接近均值」赢的 MAE，代价是丢掉了排序能力。</p>
+      <p><b>所以务必同时看三个量：</b>MAE（绝对误差）、预测跨度（是否在输出常数）、
+        组内 ρ（能不能在同一个蛋白内部排序）。只看 MAE 会得出完全错误的结论。</p>
+    </div></details>
+
+    <details><summary>MAE / RMSE / R² / Spearman / 组内 ρ 分别是什么？</summary><div class="body">
+      <table>
+        <tr><th>指标</th><th>含义</th><th>陷阱</th></tr>
+        <tr><td>MAE</td><td>平均绝对误差，kcal/mol</td><td>最直观，但对大误差不敏感</td></tr>
+        <tr><td>RMSE</td><td>均方根误差</td><td>少数离群点就能拉高；与 MAE 差距大说明有离群点</td></tr>
+        <tr><td>R²</td><td>解释了多少方差</td><td>会被「认出这是哪个蛋白」这种简单任务撑高</td></tr>
+        <tr><td>Spearman ρ</td><td>秩相关（排序一致性）</td><td>全局值会被「区分不同蛋白」撑高</td></tr>
+        <tr><td>组内 ρ</td><td>同一蛋白内部的排序相关性</td><td>这才是打分函数真正需要的</td></tr>
+        <tr><td>预测跨度</td><td>(预测max−min)/(真实max−min)</td><td>只有百分之几 = 模型在输出常数</td></tr>
+        <tr><td>常数基线</td><td>永远输出训练集平均值</td><td>任何模型都必须显著优于它</td></tr>
+      </table>
+    </div></details>
+
+    <details><summary>为什么必须按蛋白质切分？「数据泄漏」指什么？</summary><div class="body">
+      <p>同一个蛋白的相邻 MD 快照结构差异只有零点几埃、能量几乎一样。如果<b>按帧随机切分</b>，
+        测试集里就会出现训练集的近似副本，模型只要「记住」就行，指标看起来很漂亮但什么都没学会。</p>
+      <p>本项目直接量过这件事（不需要训练模型）：按帧切分时，<b>97.3% 的测试帧最近邻来自同一蛋白，
+        52.7% 是近似重复</b>；按蛋白质切分时这两个数字都是 0%。</p>
+      <p>所以默认用按蛋白质切分，测试集蛋白训练中从未出现。想自己看这个效果，用
+        「评估 / 测试」页的<b>数据泄漏消融</b>按钮。</p>
+    </div></details>
+
+    <h3>三、数据与时间</h3>
+    <details><summary>加更多数据能提升精度吗？</summary><div class="body">
+      <p><b>本项目的实测答案是：不能（至少在当前设置下）。</b>在冻结切分下把训练集按
+        25% / 50% / 100% 取子集：</p>
+      <table>
+        <tr><th>训练构象数</th><th>训练损失</th><th>验证 MAE</th></tr>
+        <tr><td>81</td><td>0.3052</td><td>128.56</td></tr>
+        <tr><td>160</td><td>0.3147</td><td><b>143.02</b></td></tr>
+        <tr><td>323</td><td>0.3041</td><td>127.16</td></tr>
+        <tr><td><i>常数基线</i></td><td>—</td><td><i>118.28</i></td></tr>
+      </table>
+      <p>数据翻倍验证 MAE 反而变差，三个点全在常数基线之上。而且<b>训练损失在任何数据量下
+        都是 0.30–0.31</b>——模型总能拟合训练集，验证集纹丝不动。这是「学到的东西不迁移」，
+        不是「样本不够」。加轮数也一样：4 轮和 20 轮结果相同。</p>
+      <p>所以现阶段<b>不要</b>花几十小时去标几百个蛋白。先把「目标设计」修好
+        （见下面最后一条）。</p>
+    </div></details>
+
+    <details><summary>打标签和训练各要多久？</summary><div class="body">
+      <p>实测（4 核 8 线程笔记本 CPU）：</p>
+      <ul>
+        <li><b>打标签</b>：每个蛋白 2–4 分钟（8 线程）。100 个蛋白 ≈ 几小时；
+          用 <code>--workers 4 --threads 2</code> 约快 2.6 倍。</li>
+        <li><b>扫描</b>：2741 个文件约 6 分钟。</li>
+        <li><b>训练</b>：323 个构象、SchNet、batch 16，约 100 秒/轮。</li>
+      </ul>
+      <p>打标签和扫描都可以中断后重跑：已完成的条目会跳过。</p>
+    </div></details>
+
+    <details><summary>磁盘和内存要多少？</summary><div class="body">
+      <ul>
+        <li>已标注数据（data/interim）：约 <b>5 KB/构象</b>。415 个蛋白 ≈ 122 MB。</li>
+        <li>图缓存：约 <b>0.5 MB/构象，且全部读进内存</b>。2 万构象 ≈ 10 GB。
+          超过预算就在「训练」页勾上<b>禁用图缓存</b>。</li>
+        <li>原始 PDB：2741 个文件约 1.66 GB。</li>
+      </ul>
+      <p>用「工作量估算」按钮可以按残基上限推算这三项。</p>
+    </div></details>
+
+    <h3>四、操作与排错</h3>
+    <details><summary>threads 和 workers 怎么配？</summary><div class="body">
+      <p><b>threads</b> 是 OpenMM 内部线程数；<b>workers</b> 是同时处理几个蛋白（多进程）。</p>
+      <p>关键在于 <code>workers × threads</code> <b>不要超过物理核数</b>，否则会互相抢核，
+        反而比单进程更慢。4 核 8 线程的机器建议 <code>--workers 4 --threads 2</code>。</p>
+      <p>OpenMM 的 CPU 并行收益是递减的：实测 8 线程只比 1 线程快约 3.5–4 倍。</p>
+    </div></details>
+
+    <details><summary>为什么改了模型结构就不能热启动？</summary><div class="body">
+      <p><code>hidden_dim</code>、<code>n_interactions</code>、<code>cutoff</code>、
+        <code>n_rbf</code> 里任何一个变了，权重张量的形状就对不上。</p>
+      <p>最坏的结果不是报错，而是<b>只加载了一部分张量、剩下的保持随机</b>——
+        得到一个看起来能跑、实际半随机初始化的模型。所以本项目在加载前逐字段比对配置，
+        发现不一致就直接报错并指出是哪个字段变了。</p>
+      <p>想要更大的模型，就换个输出目录从头训练（数据够了之后大模型才开始值钱）。</p>
+    </div></details>
+
+    <details><summary>热启动和续训有什么区别？</summary><div class="body">
+      <table>
+        <tr><th>做法</th><th>权重</th><th>优化器动量</th><th>轮次计数</th><th>用在哪</th></tr>
+        <tr><td>从头训练</td><td>随机</td><td>全新</td><td>从 1 开始</td><td>换了结构或目标</td></tr>
+        <tr><td>热启动</td><td>从检查点</td><td>全新</td><td>从 1 开始</td><td>数据变多，提升旧模型</td></tr>
+        <tr><td>续训</td><td>从检查点</td><td><b>恢复</b></td><td><b>接着数</b></td><td>长训练被中断</td></tr>
+      </table>
+      <p>热启动默认<b>沿用检查点里的目标归一化</b>（均值/标准差）。换个尺度会让输出层一开始
+        就标定错，前几轮全花在把尺度掰回来。只有新蛋白分布确实不同时，才勾「重算归一化」。</p>
+    </div></details>
+
+    <details><summary>「对照真值」/ verify 是做什么的？</summary><div class="body">
+      <p>勾上之后，除了模型预测，还会用 OpenMM 把同一批结构再算一遍真实力场能量，
+        于是你能直接看到<b>误差</b>，而不是只能相信预测值。</p>
+      <p>这是检验模型是否可用的唯一诚实方式，代价是慢（要建 OpenMM 体系）。</p>
+      <p><b>排序不对是正常的</b>：模型组内 ρ 只有 0.17，所以它排出错误顺序并不奇怪。</p>
+    </div></details>
+
+    <details><summary>怎么复现某一次运行？</summary><div class="body">
+      <p>界面只负责拼命令行参数，逻辑全在 CLI 里。所以<b>日志里显示的那行命令可以直接复制到
+        终端重跑</b>，结果一致。例如：</p>
+      <p><code>python -m pdbenergy.cli train --model schnet --epochs 25 --tag schnet_protein</code></p>
+      <p>每个运行目录里都保存了 <code>config.json</code>（用到的完整配置）、
+        <code>history.json</code>（学习曲线）、<code>data_summary.json</code>（数据切分），
+        检查点里还带着归一化统计量和切分清单——单个 <code>checkpoint.pt</code> 就足以做推理。</p>
+    </div></details>
+
+    <details><summary>报错 No module named 'pdbenergy' 怎么办？</summary><div class="body">
+      <p>说明包不在 Python 的搜索路径里。界面已经给每个子任务设置了
+        <code>PYTHONPATH</code>，所以从界面启动的任务一般不会遇到；如果你在终端手工跑命令遇到，
+        两种解法：</p>
+      <ul>
+        <li>在<b>项目根目录</b>下运行（当前目录会在搜索路径里）；</li>
+        <li>或者重装：<code>pip install -e .</code></li>
+      </ul>
+      <p>注意：如果项目目录被<b>改名或移动</b>过，editable 安装会静默失效
+        （生成的路径钩子仍指向旧位置），此时必须重装。</p>
+    </div></details>
+
+    <details><summary>提示缺少 OpenMM / PDBFixer？</summary><div class="body">
+      <p>只有涉及力场的功能需要它们：<b>打标签、预测（因为要加氢）、verify</b>。
+        训练和评估不需要。</p>
+      <p>安装：<code>pip install openmm pdbfixer</code> 或
+        <code>pip install -e ".[physics]"</code>。</p>
+      <p>为什么预测也要 OpenMM？因为 PDB 文件通常不含氢，而力场是全原子的、
+        训练标签也是全原子的，所以推理前必须先把氢补上。</p>
+    </div></details>
+
+    <details><summary>能不能用 GPU？</summary><div class="body">
+      <p>训练代码支持（<code>--device cuda</code>），本项目所有结果都是 CPU 上跑的
+        （4 核笔记本）。OpenMM 部分也有 CUDA 平台，但对小蛋白来说 CPU 反而更划算——
+        体系太小，GPU 的传输开销占主导。</p>
+    </div></details>
+
+    <h3>五、术语表</h3>
+    <div class="card"><dl class="gloss">
+      <dt>构象</dt><dd>不改变化学键、只绕单键旋转得到的分子形状。</dd>
+      <dt>残基</dt><dd>蛋白质链上的一个氨基酸单元。46 个残基的蛋白约 640 个原子（含氢）。</dd>
+      <dt>打标签</dt><dd>用物理力场算出每个构象的能量，作为神经网络的学习目标。</dd>
+      <dt>力场</dt><dd>用经验函数近似能量随原子坐标变化的模型。本项目用 AMBER14 + GBn2 隐式溶剂。</dd>
+      <dt>隐式溶剂</dt><dd>把水当成连续介质，而不是显式加几千个水分子。GBn2 是其中一种近似。</dd>
+      <dt>二面角旋转</dt><dd>绕可旋转单键旋转一侧子树。精确保持所有键长键角，是生成构象的正确方式。</dd>
+      <dt>能量最小化</dt><dd>求能量的局部极小值（L-BFGS）。用来定义相对能量的零点。</dd>
+      <dt>能量均分</dt><dd>温度 T 下势能平均值比极小值高约 ½N·kT。640 原子蛋白在 300 K 约高 570 kcal/mol。</dd>
+      <dt>图神经网络</dt><dd>用「原子=节点、邻近关系=边」的图表示分子，通过消息传递更新每个原子的特征。</dd>
+      <dt>消息传递</dt><dd>每个原子收集邻居信息并更新自己，叠 k 层就传播 k 跳。</dd>
+      <dt>SchNet</dt><dd>一种消息传递网络，边的权重由原子间距离经 RBF 展开后决定。</dd>
+      <dt>径向基（RBF）</dt><dd>把标量距离展开成一组高斯函数值，让网络更容易学。本项目间距 0.161 Å。</dd>
+      <dt>cutoff</dt><dd>只让距离小于它的原子对交换消息。越小越快，但会截断长程物理。</dd>
+      <dt>求和池化</dt><dd>把每个原子的能量贡献相加得到总能量。保证能量是广延量。</dd>
+      <dt>归一化</dt><dd>目标减均值除标准差，让损失尺度稳定。必须用训练集统计量，且存进检查点。</dd>
+      <dt>Huber 损失</dt><dd>误差小时二次、大时线性。防止少数高能离群点主导梯度。</dd>
+      <dt>AdamW</dt><dd>带一阶/二阶动量并解耦权重衰减的优化器。</dd>
+      <dt>早停</dt><dd>验证损失连续若干轮不改善就停下来，并恢复最佳轮次的权重。</dd>
+      <dt>数据泄漏</dt><dd>测试集里含有训练集的近似副本，导致指标虚高。本项目实测按帧切分泄漏率 53%。</dd>
+      <dt>消融实验</dt><dd>只改一个变量、其余完全相同的对照实验。</dd>
+      <dt>检查点</dt><dd>权重 + 模型/特征配置 + 归一化统计量 + 切分清单。自解释，可单独做推理。</dd>
+      <dt>图缓存</dt><dd>把「结构→图」的结果存内存复用。约 0.5 MB/构象，是内存的主要消耗。</dd>
+    </dl></div>
+
+    <h3>六、下一步该改什么</h3>
+    <details><summary>想让精度真正提升，应该从哪里入手？</summary><div class="body">
+      <p>按实测证据排序（完整论述见 <code>TeachFlow.md</code> §12.3）：</p>
+      <ul>
+        <li><b>① 目标设计（最该动的地方）。</b>现在的 ΔE 把两件性质不同的东西混在一起：
+          热激发幅度（MD 帧比极小值高 300–1000 kcal/mol，且随蛋白大小线性增长）
+          和构象形变（二面角帧通常只有 0–100 kcal/mol）。模型要从亚 0.1 Å 的几何细节
+          同时预测这两者，动态范围跨两个数量级。可以试：按原子数归一的目标 ΔE/N、
+          砍掉 450 K 那条高温尾巴、或者把两部分分开建模。</li>
+        <li><b>② 特征分辨率。</b>基函数间距 0.161 Å 比键长热涨落（0.05–0.1 Å）还粗，
+          加密到 64–96 后 MAE 确实降了 12–16%——但代价是排序能力塌掉。
+          它有用，但不是全部答案。</li>
+        <li><b>③ 排序损失。</b>用 pairwise ranking loss 直接优化组内 ρ，
+          因为那才是打分函数的实际用途。</li>
+        <li><b>④ 力监督。</b>把能量梯度也加进损失，这是机器学习势函数的标准做法，
+          对局部形变极其敏感。</li>
+        <li><b>⑤ 最后才是加数据。</b>等目标修好、指标越过常数基线之后，
+          数据量大概率会重新变成瓶颈。</li>
+      </ul>
+      <p>复现判定这些结论的实验：<code>scripts/learning_curve.py</code>（数据量）、
+        <code>scripts/compare_configs.py</code>（配置消融）。</p>
+    </div></details>
   </section>
 </div>
 </main>
@@ -955,6 +1257,7 @@ const $ = id => document.getElementById(id);
 const d = id => $(id).value;
 const esc = s => (s==null?'':String(s)).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const num = (v,n=2) => (v==null||isNaN(v)) ? '—' : Number(v).toFixed(n);
+const CN = {val:'验证', test:'测试'};
 
 let STATE = null, ACTIVE = null, CURSOR = 0, POLL = null;
 
@@ -981,11 +1284,11 @@ async function refresh() {
     $('s-lab').textContent = c.labelled;
     $('s-pend').textContent = c.pending;
     $('s-inv').textContent = STATE.inventory
-      ? `${STATE.inventory.usable}/${STATE.inventory.scanned} usable` : '未扫描';
+      ? `${STATE.inventory.usable}/${STATE.inventory.scanned} 可用` : '未扫描';
     renderOverview();
     fillRuns();
     fillCheckpoints();
-  } catch (e) { log('refresh 失败: ' + e.message); }
+  } catch (e) { log('刷新状态失败：' + e.message); }
 }
 
 function renderOverview() {
@@ -993,22 +1296,27 @@ function renderOverview() {
   const c = STATE.counts, inv = STATE.inventory;
   const rows = [
     ['工作目录', STATE.cwd],
-    ['data/raw 里的 PDB', c.raw_pdb],
-    ['已打标签 (data/interim)', c.labelled],
+    ['data/raw 里的 PDB 文件', c.raw_pdb],
+    ['已打标签（data/interim）', c.labelled],
     ['待标注', c.pending],
-    ['体检', inv ? `${inv.scanned} 条，可用 ${inv.usable}，排除 ${inv.unusable}` : '未扫描'],
-    ['残基范围（可用）', inv ? `${inv.min_residues} – ${inv.max_residues}` : '—'],
+    ['体检结果', inv ? `扫描 ${inv.scanned} 条，可用 ${inv.usable}，排除 ${inv.unusable}` : '未扫描'],
+    ['可用条目的残基范围', inv ? `${inv.min_residues} – ${inv.max_residues}` : '—'],
   ];
   $('ov-kv').innerHTML = rows.map(([k,v]) =>
     `<div>${esc(k)}</div><div>${esc(v)}</div>`).join('');
 
   const runs = STATE.runs || [];
-  let h = `<thead><tr><th>运行</th><th>参数</th><th>蛋白</th><th>样本</th>
-    <th>val MAE</th><th>test MAE</th><th>test ρ</th><th>预测跨度</th></tr></thead><tbody>`;
+  let h = `<thead><tr><th>运行</th>
+    <th title="切分方式 / 预测目标">配置</th>
+    <th title="参与训练的蛋白数">蛋白</th>
+    <th title="总构象数">构象</th>
+    <th title="验证集平均绝对误差，kcal/mol">验证 MAE</th>
+    <th title="测试集平均绝对误差，kcal/mol">测试 MAE</th>
+    <th title="测试集 Spearman 秩相关">测试 ρ</th>
+    <th title="该运行是否已经评估过">状态</th></tr></thead><tbody>`;
   if (!runs.length) h += `<tr><td colspan="8" style="color:var(--dim)">还没有训练好的运行</td></tr>`;
   for (const r of runs) {
     const m = (r.metrics || {}), v = m.val || {}, t = m.test || {};
-    const span = r.has_eval ? '' : '';
     h += `<tr><td>${esc(r.name)}</td><td>${esc((r.summary&&r.summary.split_mode)||'')}
       /${esc((r.summary&&r.summary.target)||'')}</td>
       <td>${r.n_proteins ?? '—'}</td><td>${r.n_samples ?? '—'}</td>
@@ -1043,13 +1351,14 @@ function renderMetrics() {
     const b = (base[s]||{}).mae;
     const verdict = (b != null && x.mae != null)
       ? (x.mae < b ? '<span class="ok">优于常数基线</span>' : '<span class="bad">不如常数基线</span>') : '';
-    h += `<div>${s} MAE / RMSE</div><div>${num(x.mae)} / ${num(x.rmse)} ${verdict}</div>`;
-    h += `<div>${s} R² / Spearman</div><div>${num(x.r2,4)} / ${num(x.spearman,4)}</div>`;
-    h += `<div>${s} 组内平均 ρ</div><div>${num(x.rank_rho,4)} ${x.rank_rho!=null && x.rank_rho<0.3 ? '<span class="warn">← 排序能力弱</span>':''}</div>`;
-    if (b != null) h += `<div>${s} 常数基线 MAE</div><div>${num(b)}</div>`;
+    h += `<div>${CN[s]} MAE / RMSE</div><div>${num(x.mae)} / ${num(x.rmse)} ${verdict}</div>`;
+    h += `<div>${CN[s]} R² / Spearman</div><div>${num(x.r2,4)} / ${num(x.spearman,4)}</div>`;
+    h += `<div>${CN[s]}组内平均 ρ</div><div>${num(x.rank_rho,4)} ${x.rank_rho!=null && x.rank_rho<0.3 ? '<span class="warn">← 排序能力弱</span>':''}</div>`;
+    if (b != null) h += `<div>${CN[s]}常数基线 MAE</div><div>${num(b)}</div>`;
   }
   h += '</div><p class="hint" style="margin:12px 0 0">预测跨度不在 metrics.json 里，'+
-       '看 parity 图或跑 <code>scripts/compare_configs.py</code> 的输出来确认模型是否在输出常数。</p>';
+       '看 parity 图、或跑 <code>scripts/compare_configs.py</code> 的输出来确认模型是否在输出常数。'+
+       '详见「帮助」页。</p>';
   $('e-metrics').innerHTML = h;
   $('e-figs').innerHTML = (r.figures||[]).map(f =>
     `<figure><img src="/api/figure/${encodeURIComponent(r.name)}/${encodeURIComponent(f)}" loading="lazy">
@@ -1070,21 +1379,25 @@ function renderRecent() {
   wrap.innerHTML = h + '</div>';
 }
 
-/* ---- data tab ---- */
+/* ---- 数据面板 ---- */
 async function loadPending() {
   const q = `?pending=1&max_residues=${d('d-max')}&min_residues=${d('d-min')}&limit=300`;
   try {
     const r = await api('/api/inventory' + q);
     renderEntries(r.rows, `待标注 ${r.n_rows}`);
   } catch (e) {
-    log('读取 inventory 失败：' + e.message + ' —— 先点「扫描 data/raw」');
+    log('读取体检报告失败：' + e.message + ' —— 请先点「扫描 data/raw」');
   }
 }
 function renderEntries(rows, label) {
   $('d-count').textContent = label;
   $('d-count').className = 'badge b-run';
-  let h = `<thead><tr><th>选</th><th>PDB</th><th>残基</th><th>原子</th><th>模型</th>
-    <th>实验</th><th>原因</th></tr></thead><tbody>`;
+  let h = `<thead><tr><th>选择</th><th>PDB 编号</th>
+    <th title="标准氨基酸残基数">残基数</th>
+    <th title="文件里的原子总数">原子数</th>
+    <th title="NMR 条目的模型个数，多模型是白送的实验构象">模型数</th>
+    <th title="EXPDTA：X-RAY / SOLUTION NMR 等">实验方法</th>
+    <th title="被排除的原因">备注</th></tr></thead><tbody>`;
   rows.forEach((r,i) => {
     h += `<tr><td><input type="checkbox" class="pick" data-id="${esc(r.pdb_id)}"></td>
       <td>${esc(r.pdb_id)}</td><td>${r.n_residues}</td><td>${r.n_atoms}</td>
@@ -1099,10 +1412,11 @@ function labelling() {
   if (!ids.length) return log('没有勾选任何条目');
   const limit = +d('d-limit');
   const chosen = limit > 0 ? ids.slice(0, limit) : ids;
+  if (limit > 0 && ids.length > limit) log(`只取前 ${limit} 条（可在输入框调整）`);
   post('label', {ids: chosen, threads: +d('d-threads'), workers: +d('d-workers')});
 }
 
-/* ---- train tab ---- */
+/* ---- 训练面板 ---- */
 function train() {
   const init = d('t-init').trim(), resume = d('t-resume').trim();
   if (init && resume) return log('热启动和续训只能填一个');
@@ -1126,7 +1440,7 @@ function predict() {
   if (manual) paths = paths.concat(manual.split(',').map(s => s.trim()).filter(Boolean));
   if (!paths.length) return log('没有选择 PDB 文件');
   const ck = $('p-ckpt').value;
-  if (!ck) return log('没有可用 checkpoint');
+  if (!ck) return log('没有可用的检查点，请先训练');
   post('predict', {paths, checkpoint: ck, max_models: +d('p-models'),
                    threads: +d('p-threads'), verify: $('p-verify').checked});
 }
@@ -1136,7 +1450,7 @@ async function fillCheckpoints() {
     const sel = $('p-ckpt'), cur = sel.value;
     sel.innerHTML = r.checkpoints.map(c =>
       `<option value="${esc(c.path)}">${esc(c.name)}</option>`).join('') ||
-      '<option value="">（无 checkpoint，先训练）</option>';
+      '<option value="">（无可用的检查点，请先训练）</option>';
     if (cur) sel.value = cur;
   } catch(e) {}
 }
@@ -1150,8 +1464,12 @@ async function fillFiles() {
 async function loadPredictions() {
   try {
     const r = await api('/api/predictions');
-    let h = `<thead><tr><th>文件</th><th>模型</th><th>预测 ΔE</th><th>真值 ΔE</th>
-      <th>误差</th><th>残基</th></tr></thead><tbody>`;
+    let h = `<thead><tr><th>文件</th>
+      <th title="NMR 条目里的第几个模型">模型序号</th>
+      <th title="模型预测的相对构象能 ΔE，kcal/mol">预测 ΔE</th>
+      <th title="用 OpenMM 力场算出的真值 ΔE（需要勾选 verify）">真值 ΔE</th>
+      <th title="预测 − 真值">误差</th>
+      <th>残基数</th></tr></thead><tbody>`;
     for (const p of r.rows) {
       h += `<tr><td>${esc(p.name)}</td><td>${p.model_index}</td>
         <td>${num(p.predicted_relative_energy_kcal_per_mol,3)}</td>
@@ -1160,7 +1478,7 @@ async function loadPredictions() {
         <td>${p.n_residues}</td></tr>`;
     }
     $('p-table').innerHTML = h + '</tbody>';
-  } catch (e) { log('没有可读的预测结果'); }
+  } catch (e) { log('没有可读的预测结果（先跑一次预测）'); }
 }
 function iterate() {
   post('iterate', {
@@ -1174,9 +1492,14 @@ async function loadRounds() {
   try {
     const r = await api('/api/rounds');
     if (!r.rounds.length) { $('i-table').innerHTML = '<p class="hint">还没有轮次记录</p>'; return; }
-    let h = `<div class="scroll"><table><thead><tr><th>轮</th><th>蛋白</th>
-      <th>train/val/test</th><th>val MAE</th><th>test MAE</th><th>test ρ</th>
-      <th>组内 ρ</th><th>常数基线</th><th>跨度</th></tr></thead><tbody>`;
+    let h = `<div class="scroll"><table><thead><tr><th>轮次</th><th>蛋白数</th>
+      <th title="训练/验证/测试的构象数">训练/验证/测试</th>
+      <th title="验证集 MAE，选模型只看它">验证 MAE</th>
+      <th title="测试集 MAE，只用于报告">测试 MAE</th>
+      <th title="测试集全局 Spearman">测试 ρ</th>
+      <th title="同一蛋白内部的排序相关性">组内 ρ</th>
+      <th title="永远输出训练集平均值的基线">常数基线</th>
+      <th title="预测跨度占真实跨度的比例">跨度</th></tr></thead><tbody>`;
     for (const x of r.rounds) {
       h += `<tr><td>${x.round}</td><td>${x.n_proteins}</td>
         <td>${x.n_train}/${x.n_val}/${x.n_test}</td>
@@ -1187,16 +1510,16 @@ async function loadRounds() {
         </tr>`;
     }
     $('i-table').innerHTML = h + '</tbody></table></div>';
-  } catch(e) { log('读取轮次失败: ' + e.message); }
+  } catch(e) { log('读取轮次表失败：' + e.message); }
 }
 
-/* ---- jobs & log ---- */
+/* ---- 任务与日志 ---- */
 async function post(action, payload) {
   try {
     const r = await api('/api/job', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify(Object.assign({action}, payload||{}))});
     startWatch(r.job);
-  } catch (e) { log('启动任务失败: ' + e.message); }
+  } catch (e) { log('启动任务失败：' + e.message); }
 }
 function startWatch(job) {
   ACTIVE = job.id; CURSOR = 0;
@@ -1213,7 +1536,7 @@ async function poll() {
   if (!ACTIVE) return;
   try {
     const j = await api(`/api/job/${ACTIVE}?since=${CURSOR}`);
-    if (j.dropped) $('log').textContent += `\n[gui] ${j.dropped} 行较早输出已被丢弃\n`;
+    if (j.dropped) $('log').textContent += `\n[界面] ${j.dropped} 行较早的输出已被丢弃\n`;
     if (j.lines.length) {
       const el = $('log');
       const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 30;
@@ -1221,16 +1544,16 @@ async function poll() {
       if (atBottom) el.scrollTop = el.scrollHeight;
     }
     CURSOR = j.cursor;
-    $('s-job').textContent = `${j.status} ${j.elapsed.toFixed(0)}s`;
+    $('s-job').textContent = `${{running:'运行中',done:'已完成',failed:'失败',cancelled:'已取消'}[j.status]||j.status} ${j.elapsed.toFixed(0)} 秒`;
     if (j.status !== 'running') {
       clearInterval(POLL); POLL = null; ACTIVE = null;
       $('btn-cancel').disabled = true;
-      $('log-label').textContent = j.status === 'done' ? '完成' : j.status;
+      $('log-label').textContent = {done:'已完成',failed:'失败',cancelled:'已取消'}[j.status]||j.status;
       $('log-label').className = 'badge ' + (j.status==='done'?'b-ok':'b-bad');
       refresh();
       if (j.status === 'done') { loadPredictions(); loadRounds(); }
     }
-  } catch (e) { /* transient */ }
+  } catch (e) { /* 轮询失败是暂时的，忽略 */ }
 }
 $('btn-cancel').onclick = async () => {
   if (!ACTIVE) return;

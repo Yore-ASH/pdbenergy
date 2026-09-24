@@ -322,6 +322,11 @@ class TestHTTPSurface(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        # Terminate children *before* touching the temp directory: a job still
+        # running holds a handle on its cwd, and on Windows that makes cleanup
+        # fail with WinError 32.  This is also the behaviour the GUI itself needs
+        # (JobManager.shutdown), so the test would rather exercise it than dodge it.
+        cls.handler_cls.manager.shutdown()
         cls.httpd.shutdown()
         cls.httpd.server_close()
         cls.tmp.cleanup()
@@ -409,14 +414,21 @@ class TestHTTPSurface(unittest.TestCase):
             self.assertEqual(ctx.exception.code, 400, payload)
 
     def test_starting_a_job_returns_a_streamable_id(self):
-        status, payload = self.post("/api/job", {"action": "download", "ids": ["ZZZZ"]})
+        """End-to-end plumbing: POST a job, resolve its id, watch it finish.
+
+        The action must fail *locally and fast*.  An earlier version used
+        ``download`` with a bogus PDB id, which depends on network timeouts and
+        retries - it passed once and then hung for minutes, which is a flaky test
+        and a lesson about letting the network into a unit test.
+        """
+        bogus = os.path.join(self.tmp.name, "no_such_run")
+        status, payload = self.post("/api/job", {"action": "evaluate", "run_dir": bogus})
         self.assertEqual(status, 200)
         job_id = payload["job"]["id"]
         self.assertTrue(job_id)
-        self.assertIn("download", payload["job"]["command"])
-        # The job will fail (no network / no such entry), but the ID must resolve
-        # and the status must eventually leave "running".
-        deadline = time.time() + 60
+        self.assertIn("evaluate", payload["job"]["command"])
+
+        deadline = time.time() + 90
         status_value = "running"
         while time.time() < deadline:
             _, job = self.get(f"/api/job/{job_id}")
@@ -424,8 +436,10 @@ class TestHTTPSurface(unittest.TestCase):
             if status_value != "running":
                 break
             time.sleep(0.3)
-        self.assertNotEqual(status_value, "running",
-                            "job never reached a terminal state")
+        self.assertIn(status_value, ("done", "failed"),
+                      "job never reached a terminal state")
+        # A missing run directory must be reported as a failure, not a success.
+        self.assertEqual(status_value, "failed")
 
     def test_unknown_job_id_is_404(self):
         with self.assertRaises(urllib.error.HTTPError) as ctx:

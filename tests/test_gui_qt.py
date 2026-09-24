@@ -412,5 +412,69 @@ class TestJobLifecycle(unittest.TestCase):
                 window.close()
 
 
+@requires_qt
+class TestStartupSelfCheck(unittest.TestCase):
+    """The window must say where it thinks it is, in the log, at startup.
+
+    Without this, a broken child environment surfaced only as a bare
+    ``No module named pdbenergy.cli`` buried in job output - with no interpreter,
+    no project root and no hint of what to do about it.
+    """
+
+    app = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = QApplication.instance() or QApplication(sys.argv[:1])
+
+    def test_environment_is_reported_on_startup(self):
+        import tempfile
+
+        from pdbenergy.gui_qt import AppContext, MainWindow
+
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as root:
+            dirs = {k: os.path.join(root, k)
+                    for k in ("raw", "interim", "processed", "outputs")}
+            for path in dirs.values():
+                os.makedirs(path, exist_ok=True)
+            manager = JobManager(root)
+            window = MainWindow(AppContext(cfg=Config(), dirs=dirs, manager=manager))
+            try:
+                text = window.log.toPlainText()
+                self.assertIn("[自检]", text)
+                self.assertIn(manager.python, text)
+                self.assertIn(manager.project_root, text)
+                self.assertIn(dirs["raw"], text)
+                # The package is importable in the test environment, so the
+                # check must come back positive rather than warn.
+                self.assertIn("pdbenergy.cli", text)
+                self.assertNotIn("✗", text)
+            finally:
+                window.close()
+
+    def test_a_missing_project_root_is_reported_as_a_problem(self):
+        """Simulate the renamed-checkout case: the root the GUI captured is gone."""
+        import tempfile
+
+        from pdbenergy.gui_qt import AppContext, MainWindow
+
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as root:
+            dirs = {k: os.path.join(root, k)
+                    for k in ("raw", "interim", "processed", "outputs")}
+            for path in dirs.values():
+                os.makedirs(path, exist_ok=True)
+            manager = JobManager(root)
+            manager.project_root = os.path.join(root, "PyT_PDB_HANDEL")  # renamed away
+            window = MainWindow(AppContext(cfg=Config(), dirs=dirs, manager=manager))
+            try:
+                text = window.log.toPlainText()
+                self.assertIn("✗", text)
+                self.assertIn("项目根目录不存在", text)
+                # ...and the user is told what to run instead of just what broke.
+                self.assertIn("-c", text)
+            finally:
+                window.close()
+
+
 if __name__ == "__main__":
     unittest.main()
